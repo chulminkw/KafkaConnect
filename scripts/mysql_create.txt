@@ -1,0 +1,58 @@
+--mysql은 table명의 대소문자를 구별함에 유의
+-- mysql은 슈퍼 user라도 table의 delete/insert시에 privileges를 할당해야 함. 
+-- grant all privileges on *.* to userid;
+-- mysql에 신규 user를 생성할 때 kafka debezium source connect 해당 신규 user가 performance_schema에 대한 접근 권한이 있어야 함. 
+
+CREATE TABLE customers (
+	customer_id int NOT NULL,
+	email_address varchar(255) NOT NULL,
+	full_name varchar(255) NOT NULL,
+	primary key(customer_id)
+) ENGINE=InnoDB ;
+
+CREATE TABLE products (
+	product_id int NOT NULL,
+	product_name varchar(100) NULL,
+	product_category varchar(200) NULL,
+	unit_price numeric NULL,
+	primary key(product_id)
+) ENGINE=InnoDB ;
+
+CREATE TABLE orders (
+	order_id int NOT NULL,
+	order_datetime timestamp NOT NULL,
+	customer_id int NOT NULL,
+	order_status varchar(10) NOT NULL,
+	store_id int NOT NULL,
+	primary key(order_id)
+) ENGINE=InnoDB ;
+
+
+CREATE TABLE order_items (
+	order_id int NOT NULL,
+	line_item_id int NOT NULL,
+	product_id int NOT NULL,
+	unit_price numeric(10, 2) NOT NULL,
+	quantity int NOT NULL,
+	primary key (order_id, line_item_id)
+) ENGINE=InnoDB;
+
+-- PK가 MULTI 컬럼일 경우 AUTO CREATE를 FALSE로 설정해야 되는지? 잘 몰라서 SINK쪽 테이블을 먼저 생성 후 데이터 입력. 
+CREATE TABLE stage.order_items (
+	order_id int NOT NULL,
+	line_item_id int NOT NULL,
+	product_id int NOT NULL,
+	unit_price numeric(10, 2) NOT NULL,
+	quantity int NOT NULL,
+	primary key(order_id, line_item_id)
+);
+
+ALTER TABLE om.order_items ADD CONSTRAINT om.order_items_pk PRIMARY KEY(order_id, line_item_id);
+
+
+CREATE TABLE customers_t01 (
+	customer_id int NOT NULL,
+	email_address varchar(255) NOT NULL,
+	full_name varchar(255) NOT NULL,
+	primary key(customer_id)
+) ENGINE=InnoDB ;
