@@ -41,7 +41,6 @@ mkdir error
 **-REST API를 이용하여 Connector 생성 json 파일을 Connect로 전달하여 Spool Dir Source Connector 신규 생성**
 ```js
 cd ~/connector_configs
-
 curl -X POST -H "Content-Type: application/json" http://localhost:8083/connectors --data @spooldir_source.json
 ```
 
@@ -55,10 +54,25 @@ mkdir finished
 **-오류가 발생한 Connector를 삭제한 후 다시 재 생성**
 ```js
 cd ~/connector_configs
-curl -X DELETE http://localhost:8083/connectors/csv_spooldir_source
+curl -X DELETE http://localhost:8083/connectors/csv_spooldir_source -s
 curl -X POST -H "Content-Type: application/json" http://localhost:8083/connectors --data @spooldir_source.json
 ```
 
+**-제대로 동작하는지 Connect log 확인**
+
+**- Kafka broker에 제대로 전송되었는지 토픽 및 consumer로 확인**
+```js
+kafka-topics --bootstrap-server localhost:9092 --list
+kafka-console-consumer --bootstrap-server localhost:9092 --topic spooldir-testing-topic --from-beginning --property print.key=true
+```
+
+
+**- http 클라이언트(httpie)를 이용하여 REST API 적용**
+```js
+cd ~/connector_configs
+http DELETE http://localhost:8083/connectors/csv_spooldir_source
+http POST http://localhost:8083 @spooldir_source.json
+```
 
 
 
