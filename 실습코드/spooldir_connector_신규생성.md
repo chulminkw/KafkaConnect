@@ -71,7 +71,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic spooldir-testin
 ```js
 cd ~/connector_configs
 http DELETE http://localhost:8083/connectors/csv_spooldir_source
-http POST http://localhost:8083 @spooldir_source.json
+http POST http://localhost:8083/connectors @spooldir_source.json
 ```
 
 
