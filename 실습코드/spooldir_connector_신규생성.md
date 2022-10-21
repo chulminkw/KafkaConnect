@@ -40,9 +40,29 @@ mkdir error
 
 **-REST API를 이용하여 Connector 생성 json 파일을 Connect로 전달하여 Spool Dir Source Connector 신규 생성**
 ```js
-<![endif]-->
-
 cd ~/connector_configs
 
 curl -X POST -H "Content-Type: application/json" http://localhost:8083/connectors --data @spooldir_source.json
 ```
+
+**- 오류가 발생하는지 반드시 Connect log를 확인함. finished.path를 설정하지 않아서 오류가 발생함**
+finished.path 디렉토리를 spool_test_dir 밑에 finished로 생성. 
+```js
+cd ~/spool_test_dir
+mkdir finished
+```
+
+**-오류가 발생한 Connector를 삭제한 후 다시 재 생성**
+```js
+cd ~/connector_configs
+curl -X DELETE http://localhost:8083/connectors/csv_spooldir_source
+curl -X POST -H "Content-Type: application/json" http://localhost:8083/connectors --data @spooldir_source.json
+```
+
+
+
+
+
+
+
+
