@@ -1,4 +1,4 @@
-# JDBC Source/Source Connector 실습
+# JDBC Source Connector 실습
 
 ### JDBC Source/Sink Connector Plugin을 Connect에 설치하기
 
