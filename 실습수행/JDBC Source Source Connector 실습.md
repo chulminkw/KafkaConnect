@@ -69,7 +69,7 @@ http http://localhost:8083/connector-plugins
 
 ```sql
 cd ~/connector_configs
-http POST [http://localhost:8083/connectors](http://localhost:8083/connectors) @mysql_jdbc_om_source.json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source.json
 ```
 
 ### JDBC Source Connector 테스트 - Incrementing(Insert 테스트)
