@@ -55,19 +55,19 @@ http http://localhost:8083/connector-plugins
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         "topic.prefix": "mysql_om_",
-				"topic.creation.default.replication.factor": 1,
-				"topic.creation.default.partitions": 1, 
-				"table.whitelist": "customers",
-	      "poll.interval.ms": 10000,
-				"mode": "incrementing",
-				"incrementing.column.name": "customer_id"
+        "topic.creation.default.replication.factor": 1,
+        "topic.creation.default.partitions": 1, 
+        "table.whitelist": "customers",
+        "poll.interval.ms": 10000,
+        "mode": "incrementing",
+        "incrementing.column.name": "customer_id"
     }
 }
 ```
 
 - Connect에 REST API로 mysql_jdbc_om_source.json을 등록하여 JDBC Source Connector 신규 생성
 
-```bash
+```sql
 cd ~/connector_configs
 http POST [http://localhost:8083/connectors](http://localhost:8083/connectors) @mysql_jdbc_om_source.json
 ```
@@ -82,7 +82,7 @@ insert into customers values (1, 'testaddress_01@testdomain', 'testuser_01', now
 
 - topic 리스트 확인 및 consumer로 메시지 확인
 
-```bash
+```sql
 kafka-topics --bootstrap-server localhost:9092 --list
 
 kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_customers --from-beginning
@@ -113,7 +113,7 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
         "topic.creation.default.replication.factor": 1,
         "topic.creation.default.partitions": 1, 
         "table.whitelist": "customers",
-	      "poll.interval.ms": 10000,
+        "poll.interval.ms": 10000,
         "mode": "timestamp+incrementing",
         "incrementing.column.name": "customer_id",
         "timestamp.column.name": "system_upd"
@@ -123,7 +123,7 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 
 - 기존에 생성/등록된 mysql_jdbc_om_source Connector를 삭제하고 새롭게 생성 등록
 
-```json
+```sql
 cd ~/connector_configs
 http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source
 http POST http://localhost:8083/connectors @mysql_jdbc_om_source_update.json
@@ -131,19 +131,19 @@ http POST http://localhost:8083/connectors @mysql_jdbc_om_source_update.json
 
 - Insert 데이터가 제대로 동작하는지 확인
 
-```json
+```sql
 insert into customers (email_address, full_name, system_upd) 
 values ('testaddress_03@testdomain', 'testuser_03', now());
 ```
 
 - 아래와 같이 Update 수행 후 동작 확인
 
-```json
+```sql
 update customers set full_name='updated_name' where customer_id = 3
 ```
 
 - 아래와 같이 Update 수행 후 동작 확인
 
-```json
+```sql
 update customers set full_name='updated_name', system_upd=now() where customer_id=3;
 ```
