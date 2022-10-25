@@ -126,7 +126,7 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 ```sql
 cd ~/connector_configs
 http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source_00
-http POST http://localhost:8083/connectors @mysql_jdbc_om_source_update.json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_upd.json
 ```
 
 - Insert 데이터가 제대로 동작하는지 확인
