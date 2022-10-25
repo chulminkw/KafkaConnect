@@ -98,7 +98,7 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 
 ### JDBC Source Connector 테스트 - timestamp+incrementing(Insert/Update)
 
-- vi ~/connector_configs/mysql_jdbc_om_source_time_inc.json 아래로 생성
+- vi ~/connector_configs/mysql_jdbc_om_source_upd.json 을 아래로 생성
 
 ```json
 {
