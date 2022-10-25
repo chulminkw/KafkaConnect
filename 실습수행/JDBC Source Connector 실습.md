@@ -102,14 +102,14 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 
 ```json
 {
-    "name": "mysql_jdbc_om_source_00",
+    "name": "mysql_jdbc_om_source_01",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
         "tasks.max": "1",
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_om_",
+        "topic.prefix": "mysql_om_upd_",
         "topic.creation.default.replication.factor": 1,
         "topic.creation.default.partitions": 1, 
         "table.whitelist": "customers",
@@ -121,11 +121,11 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 }
 ```
 
-- 기존에 생성/등록된 mysql_jdbc_om_source Connector를 삭제하고 새롭게 생성 등록
+- 기존에 생성/등록된 mysql_jdbc_om_source_00 Connector를 삭제하고 mysql_jdbc_om_source_01로 새롭게 생성 등록
 
 ```sql
 cd ~/connector_configs
-http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source
+http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source_00
 http POST http://localhost:8083/connectors @mysql_jdbc_om_source_update.json
 ```
 
