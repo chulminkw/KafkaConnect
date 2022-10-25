@@ -11,6 +11,13 @@ sudo apt-get update
 sudo apt-get install mysql-server
 ```
 
+- 외부 IP에서 접속 허용할 수 있도록 mysql.conf.d 수정
+
+```bash
+cd /etc/mysql/mysql.conf.d
+sudo vi mysqld.cnf
+```
+
 - mysql 설치 버전 확인하고 접속 port 오픈
 
 ```bash
@@ -24,7 +31,8 @@ sudo ufw allow mysql
 # mysql client 수행하여 접속
 sudo mysql
 # mysql root 패스워드 변경
-mysql> alter user 'root'@'localhost' identified with mysql_native_password by 'mysql';
+mysql> create user 'root'@'%' identified with mysql_native_password by 'root';
+mysql> grant all privileges on *.* to 'root'@'%' with grant option;
 mysql> flush privileges;
 ```
 
@@ -50,17 +58,38 @@ mysql> create database om;
 mysql> show databases;
 ```
 
-- 새롭게 생성한 om 데이터베이스에 접속하여 실습에 사용할 테이블 생성
+- mysql에서 새로운 사용자 connect_dev 추가하고 om DB 사용 권한 할당
 
 ```sql
-mysql> use om;
+create user 'connect_dev'@'%' identified by 'connect_dev';
+# 데이터베이스 사용권한 부여
+grant all privileges on om.* to 'connect_dev'@'%' with grant option;
+
+flush privileges;
+```
+
+- connect_dev 사용자로 mysql 접속
+
+```sql
+mysql -u connect_dev -p 
+```
+
+- om 데이터베이스에 접속하여 실습에 사용할 테이블 생성
+
+```sql
+use om;
 
 -- 아래 Create Table 스크립트수행. customers 테이블 생성
 CREATE TABLE customers (
-	customer_id int NOT NULL,
-	email_address varchar(255) NOT NULL,
-	full_name varchar(255) NOT NULL,
-	primary key(customer_id)
+customer_id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+email_address varchar(255) NOT NULL,
+full_name varchar(255) NOT NULL,
+system_upd timestamp NOT NULL
 ) ENGINE=InnoDB ;
+
+# update용 system_upd 컬럼에 인덱스 생성. 
+create index idx_customers_001 on customers(system_upd);
+
+select * from customers;
 
 ```
