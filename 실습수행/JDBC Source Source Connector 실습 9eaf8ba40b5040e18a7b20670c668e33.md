@@ -55,12 +55,12 @@ http http://localhost:8083/connector-plugins
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         "topic.prefix": "mysql_om_",
-				"topic.creation.default.replication.factor": 1,
-				"topic.creation.default.partitions": 1, 
-				"table.whitelist": "customers",
-				"poll.interval.ms": 10000,
-        "mode": "incrementing",
-				"incrementing.column.name": "customer_id"
+			"topic.creation.default.replication.factor": 1,
+			"topic.creation.default.partitions": 1, 
+			"table.whitelist": "customers",
+			"poll.interval.ms": 10000,
+			"mode": "incrementing",
+			"incrementing.column.name": "customer_id"
     }
 }
 ```
