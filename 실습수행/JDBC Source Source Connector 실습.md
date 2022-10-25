@@ -47,7 +47,7 @@ http http://localhost:8083/connector-plugins
 
 ```json
 {
-    "name": "mysql_jdbc_om_source",
+    "name": "mysql_jdbc_om_source_00",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
         "tasks.max": "1",
@@ -102,7 +102,7 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 
 ```json
 {
-    "name": "mysql_jdbc_om_source",
+    "name": "mysql_jdbc_om_source_00",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
         "tasks.max": "1",
