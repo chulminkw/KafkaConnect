@@ -189,7 +189,7 @@ insert into order_items values(1, 1, 1, 100, 1, now());
 - 생성된 Topic들을 확인하고 Topic의 메시지 확인
 
 ```sql
-kafkacat -b localhost:9092 -t mysql_om_upd_orders -C -J  -e | grep -v '% Reached' |jq '.'
+kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reached' |jq '.'
 ```
 
 ### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
