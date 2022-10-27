@@ -98,7 +98,7 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 
 ### JDBC Source Connector 테스트 - timestamp+incrementing(Insert/Update)
 
-- vi ~/connector_configs/mysql_jdbc_om_source_upd.json 을 아래로 생성
+- vi ~/connector_configs/mysql_jdbc_om_source_upd.json를 아래로 생성
 
 ```json
 {
@@ -146,4 +146,80 @@ update customers set full_name='updated_name' where customer_id = 3
 
 ```sql
 update customers set full_name='updated_name', system_upd=now() where customer_id=3;
+```
+
+### 여러개의 테이블들을 Source Connector에 설정
+
+- 새로운 connector이름인 mysql_jdbc_om_source_02로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_mt.json 파일명으로 설정 저장
+
+```json
+{
+    "name": "mysql_jdbc_om_source_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_om_bulk_",
+        "poll.interval.ms": 10000,
+        "mode": "bulk",
+        "table.blacklist": "customers",
+        "catalog.pattern": "om"
+    }
+}
+```
+
+- Connect에 위 설정을 등록하여 여러개의 테이블을 읽어들이는 Source Connector 생성
+
+```sql
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_mt.json
+```
+
+- orders, products, order_items 테이블에 새로운 데이터를 입력
+
+```sql
+use om;
+
+insert into orders values(1, now(), 1, 'delivered', 1, now());
+insert into products values(1, 'testproduct', 'testcategory', 100, now());
+insert into order_items values(1, 1, 1, 100, 1, now());
+```
+
+- 생성된 Topic들을 확인하고 Topic의 메시지 확인
+
+```sql
+kafkacat -b localhost:9092 -t mysql_om_upd_orders -C -J  -e | grep -v '% Reached' |jq '.'
+```
+
+### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
+
+- JDBC Source Connector는 Topic 메시지의 Key값을 생성하기 위해서는 SMT(Single Message Transform) 설정 필요
+- ValueToKey와 ExtractField 를 이용하여 Topic 메시지의 Key값 생성
+- 새로운 connector이름인 mysql_jdbc_om_source_03로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_smt.json 파일명으로 설정 저장
+
+```json
+{
+    "name": "mysql_jdbc_om_source_03",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_om_smt_",
+        "topic.creation.default.replication.factor": 1,
+        "topic.creation.default.partitions": 1, 
+        "table.whitelist": "customers",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp+incrementing",
+        "incrementing.column.name": "customer_id",
+        "timestamp.column.name": "system_upd",
+        "transforms": "create_key, extract_key",
+        "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.create_key.fields": "customer_id",
+        "transforms.extract_key.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extract_key.field": "customer_id"
+    }
+}
 ```
