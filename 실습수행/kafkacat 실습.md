@@ -64,7 +64,7 @@ kafka-topics --bootstrap-server localhost:9092 --create --topic kcat-test-topic 
 
 ```sql
 kafkacat -b localhost:9092 -t kcat-test-topic -P -K#
-kafkacat -b localhost:9092 -t kcat-test-topic -K#
+kafkacat -b localhost:9092 -t kcat-test-topic -C -K#
 ```
 
 - offset Reset을 적용. 대상 connector에 해당하는 key값의 value에 Null을 적용. 최종 메시지가 있는 partition을 찾아서 해당 partition에 Null 메시지를 적용해야 함
