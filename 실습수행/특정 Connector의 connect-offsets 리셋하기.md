@@ -31,6 +31,6 @@ echo '["mysql_jdbc_om_source_03",{"protocol":"1","table":"om.customers"}]#' | \
 
 ```sql
 
-kafkacat -b localhost:9092 -t mysql_om_smt_customers -C 
+kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -K# -e
 http POST http://localhost:8083/connectors @mysql_jdbc_om_source_smt.json
 ```
