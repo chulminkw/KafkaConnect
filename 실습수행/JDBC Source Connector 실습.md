@@ -224,6 +224,6 @@ kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reache
 
 - mysql_om_smt_customers 토픽이 생성되었음을 확인하고 해당 topic의 메시지 확인
 
-```json
+```sql
 kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | egrep -V '% Reached' | jq '.'
 ```
