@@ -196,7 +196,7 @@ kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reache
 
 - JDBC Source Connector는 Topic 메시지의 Key값을 생성하기 위해서는 SMT(Single Message Transform) 설정 필요
 - ValueToKey와 ExtractField 를 이용하여 Topic 메시지의 Key값 생성
-- 새로운 connector이름인 mysql_jdbc_om_source_03로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_smt.json 파일명으로 설정 저장
+- 새로운 connector이름인 mysql_jdbc_om_source_03로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_smt.json 파일명으로 아래 설정 저장
 
 ```json
 {
@@ -208,8 +208,6 @@ kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reache
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         "topic.prefix": "mysql_om_smt_",
-        "topic.creation.default.replication.factor": 1,
-        "topic.creation.default.partitions": 1, 
         "table.whitelist": "customers",
         "poll.interval.ms": 10000,
         "mode": "timestamp+incrementing",
@@ -222,4 +220,10 @@ kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reache
         "transforms.extract_key.field": "customer_id"
     }
 }
+```
+
+- mysql_om_smt_customers 토픽이 생성되었음을 확인하고 해당 topic의 메시지 확인
+
+```json
+kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | egrep -V '% Reached' | jq '.'
 ```
