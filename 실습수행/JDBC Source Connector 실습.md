@@ -278,7 +278,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_o
 
 ```json
 {
-    "name": "mysql_jdbc_om_source_06",
+    "name": "mysql_jdbc_om_source_05",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
         "tasks.max": "1",
