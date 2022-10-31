@@ -268,7 +268,7 @@ kafkacat -b localhost:9092 -t mysql_om_mkey_order_items -C -J -e | grep -v "% Re
 
 #또는
 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_order_items --property print.key=true | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_order_items --property print.key=true --from-beginning | jq '.'
 ```
 
 ### Topic 메시지 전송 시 schema 출력을 없애기
