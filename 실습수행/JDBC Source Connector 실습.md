@@ -224,7 +224,7 @@ kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reache
 
 - mysql_om_smt_customers 토픽이 생성되었음을 확인하고 해당 topic의 메시지 확인
 
-```sql
+```bash
 kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | grep -v "% Reached" | jq '.'
 ```
 
@@ -257,7 +257,7 @@ kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | grep -v "% Reach
 
 - 신규 Connector로 등록
 
-```json
+```sql
 http POST http://localhost:8083/connectors @mysql_jdbc_om_source_mkey.json
 ```
 
@@ -308,13 +308,13 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_o
 
 - 신규 Connector로 등록
 
-```json
+```sql
 http POST http://localhost:8083/connectors @mysql_jdbc_om_source_noschema.json
 ```
 
 - 토픽 메시지 확인
 
-```json
+```sql
 kafkacat -b localhost:9092 -t mysql_om_smt_noschema_customers -C -J -e | grep -v "% Reached" | jq '.'
 
 #또는
