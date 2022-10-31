@@ -224,6 +224,100 @@ kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reache
 
 - mysql_om_smt_customers 토픽이 생성되었음을 확인하고 해당 topic의 메시지 확인
 
-```sql
+```json
 kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | grep -v "% Reached" | jq '.'
+```
+
+### 여러개의 컬럼으로 구성된 PK를 Key값으로 설정하기
+
+- ValueToKey에 PK가 되는 컬럼명을 fields로 적용. ExtractField는 적용하지 않아야 함.
+- 일반적으로 incrementing mode로 설정이 어려움. timestamp 모드로 설정 필요
+- 아래 설정을 mysql_jdbc_om_source_mkey.json 파일로 설정
+
+```json
+{
+    "name": "mysql_jdbc_om_source_04",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_om_mkey_",
+        "table.whitelist": "order_items",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp",
+        "timestamp.column.name": "system_upd",
+        "transforms": "create_key",
+        "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.create_key.fields": "order_id, line_item_id"
+     }
+}
+```
+
+- 신규 Connector로 등록
+
+```json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_mkey.json
+```
+
+- 토픽 메시지 확인
+
+```bash
+kafkacat -b localhost:9092 -t mysql_om_mkey_order_items -C -J -e | grep -v "% Reached" | jq '.'
+
+#또는
+
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_order_items --property print.key=true | jq '.'
+```
+
+### Topic 메시지 전송 시 schema 출력을 없애기
+
+- key.converter.schemas.enable을 false로, value.converter.schemas.enable 역시 false로 설정하면 토픽 메시지로 schema 값이 출력되지 않음.
+- 아래 설정을 mysql_jdbc_om_source_noschema.json 파일로 저장.
+
+```json
+{
+    "name": "mysql_jdbc_om_source_06",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_om_smt_noschema_",
+        "table.whitelist": "customers",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp+incrementing",
+        "incrementing.column.name": "customer_id",
+        "timestamp.column.name": "system_upd",
+
+        "transforms": "create_key, extract_key",
+        "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.create_key.fields": "customer_id",
+        "transforms.extract_key.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extract_key.field": "customer_id",
+
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter.schemas.enable": "false"
+    }
+}
+```
+
+- 신규 Connector로 등록
+
+```json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_noschema.json
+```
+
+- 토픽 메시지 확인
+
+```json
+kafkacat -b localhost:9092 -t mysql_om_smt_noschema_customers -C -J -e | grep -v "% Reached" | jq '.'
+
+#또는
+
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_noschema_customers --property print.key=true | jq '.'
 ```
