@@ -32,7 +32,7 @@ connect_start.sh
 | 테이블명 | Json 파일명 | Connector 명 | Topic 명 |
 | --- | --- | --- | --- |
 | Customers | mysql_jdbc_source_customers.json | mysql_jdbc_source_customers | mysql_jdbc_customers |
-| Products | mysql_jdbc_source_products.json | mysql_jdbc_source_products | mysql_products |
+| Products | mysql_jdbc_source_products.json | mysql_jdbc_source_products | mysql_jdbc_products |
 | Orders | mysql_jdbc_source_orders.json | mysql_jdbc_source_orders | mysql_jdbc_orders |
 | Order_items | mysql_jdbc_source_order_items.json | mysql_jdbc_source_order_items | mysql_jdbc_order_items |
 
