@@ -49,10 +49,10 @@ cd ~/connector_configs
 mkdir jdbc_source_configs
 cd ~/connector_configs/jdbc_source_configs
 
-curl -o mysql_jdbc_source_customers.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector-configs/jdbc_source_configs/mysql_jdbc_source_customers.json
-curl -o mysql_jdbc_source_order_items.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector-configs/jdbc_source_configs/mysql_jdbc_source_order_items.json
-curl -o mysql_jdbc_source_orders.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector-configs/jdbc_source_configs/mysql_jdbc_source_orders.json
-curl -o mysql_jdbc_source_products.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector-configs/jdbc_source_configs/mysql_jdbc_source_products.json
+curl -o mysql_jdbc_source_customers.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector_configs/jdbc_source_configs/mysql_jdbc_source_customers.json
+curl -o mysql_jdbc_source_order_items.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector_configs/jdbc_source_configs/mysql_jdbc_source_order_items.json
+curl -o mysql_jdbc_source_orders.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector_configs/jdbc_source_configs/mysql_jdbc_source_orders.json
+curl -o mysql_jdbc_source_products.json https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/connector_configs/jdbc_source_configs/mysql_jdbc_source_products.json
 ```
 
 ### MySQL om 데이터베이스의 테이블 데이터 재입력
