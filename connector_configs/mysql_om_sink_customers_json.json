@@ -1,0 +1,24 @@
+{
+    "name": "my-sink-om-customers",
+    "config": {
+        "connector.class":
+        "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "dbserver1.om.customers",
+        "connection.url": "jdbc:mysql://mysql_container:3306/om_target",
+	"connection.user": "debezium",
+	"connection.password": "dbz",
+	"insert.mode": "upsert",
+	"pk.fields": "customer_id",
+	"pk.mode": "record_key",
+	"delete.enabled": "true",
+	"key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "schema.enable": "true",	
+	"transforms": "renameTopic",
+	"transforms.renameTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+	"transforms.renameTopic.regex": "dbserver1.om.customers",
+	"transforms.renameTopic.replacement": "customers_tgt"
+
+    }
+}

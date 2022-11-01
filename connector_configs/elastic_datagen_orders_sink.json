@@ -1,0 +1,16 @@
+{
+    "name": "elastic-orders-dgen-sink",
+    "config": {
+        "connector.class":
+        "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+        "tasks.max": "1",
+        "topics": "orders_json",
+        "connection.url": "http://elastic_container:9200",
+	"key.converter": "org.apache.kafka.connect.storage.StringConverter",
+	"value.converter": "org.apache.kafka.connect.json.JsonConverter",	
+        "value.converter.schemas.enable": "false",	
+	"key.ignore": "true",
+	"schema.ignore": "true",
+        "type.name": "orders_dgen"
+    }
+}
