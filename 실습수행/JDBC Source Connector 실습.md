@@ -319,5 +319,5 @@ kafkacat -b localhost:9092 -t mysql_om_smt_noschema_customers -C -J -e | grep -v
 
 #또는
 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_noschema_customers --property print.key=true | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_noschema_customers --property print.key=true --from-beginning | jq '.'
 ```
