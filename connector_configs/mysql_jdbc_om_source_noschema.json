@@ -1,0 +1,27 @@
+{
+    "name": "mysql_jdbc_om_source_05",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_om_smt_noschema_",
+        "table.whitelist": "customers",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp+incrementing",
+        "incrementing.column.name": "customer_id",
+        "timestamp.column.name": "system_upd",
+
+        "transforms": "create_key, extract_key",
+        "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.create_key.fields": "customer_id",
+        "transforms.extract_key.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extract_key.field": "customer_id",
+
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter.schemas.enable": "false"
+    }
+}
