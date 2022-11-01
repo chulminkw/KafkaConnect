@@ -1,0 +1,15 @@
+{
+    "name": "mysql_jdbc_om_source_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_om_bulk_",
+        "poll.interval.ms": 10000,
+        "mode": "bulk",
+        "table.blacklist": "customers",
+        "catalog.pattern": "om"
+    }
+}
