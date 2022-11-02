@@ -103,7 +103,6 @@ http GET http://localhost:8083/connector-plugins | jq '.[].class'
         "table.name.format": "customers_sink_base",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "schema.enable": "true",
         "auto.create": "true"
     }
 }
