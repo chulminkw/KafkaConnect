@@ -109,18 +109,31 @@ http GET http://localhost:8083/connector-plugins | jq '.[].class'
 }
 ```
 
-- auto.create로 테이블을 자동 생성하는 것은 바람직하지 않음. 테이블 관리를 위해서라도 DB에서 테이블을 먼저 생성한 뒤에 토픽에서 DB 테이블로 Sink 권장
-- 기존 mysql_jdbc_sink_00 Connector 삭제
+- 새로운 sink connector 생성
 
-```sql
-http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_00
+```json
+http POST http://localhost:8083/connectors @mysql_jdbc_sink_00.json 
 ```
 
-- 아래 설정을 mysql_jdbc_sink_01.json으로 만들고 Connect에 신규 Connector로 생성.
+- om_sink db에서 customers_sink_base 테이블의 데이터 입력 확인
+- mysql_jdbc_customers 토픽의 메시지 확인
+
+```json
+kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Received' | jq '.'
+```
+
+- auto.create로 테이블을 자동 생성하는 것은 바람직하지 않음. 테이블 관리를 위해서라도 DB에서 테이블을 먼저 생성한 뒤에 토픽에서 DB 테이블로 Sink 권장
+- 기존 mysql_jdbc_sink_customers_00 Connector 삭제
+
+```sql
+http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_customers_00
+```
+
+- 아래 설정을 mysql_jdbc_sink_customers.json으로 만들고 Connect에 신규 Connector로 생성.
 
 ```json
 {
-    "name": "mysql_jdbc_sink_customers_01",
+    "name": "mysql_jdbc_sink_customers",
     "config": {
         "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
@@ -139,11 +152,16 @@ http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_00
 }
 ```
 
-### PK컬럼이 여러개인 테이블에 입력하기
+- 신규 Connector 생성 후 om_sink DB의 customers_sink 테이블에서 데이터 입력 확인
+
+### PK컬럼이 여러개인 테이블에 대한 Sink Connector 생성
+
+- order_id, line_item_id를 PK로 가지는 order_items_sink 테이블에 데이터 입력
+- 아래 설정을 mysql_jdbc_sink_order_items.json 파일에 저장
 
 ```json
 {
-    "name": "mysql_jdbc_sink_order_items_01",
+    "name": "mysql_jdbc_sink_order_items",
     "config": {
         "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
@@ -157,8 +175,61 @@ http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_00
         "delete.enabled": "true",
         "table.name.format": "order_items_sink",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "schema.enable": "true",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- order_items_sink 테이블용 신규 Sink Connector 생성
+
+```sql
+http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
+```
+
+### 다른 테이블에 대해서도 Sink Connector 생성
+
+- products_sink용 sink connector를 위해서 아래 설정을 mysql_jdbc_sink_products.json 파일에 저장.
+
+```json
+{
+    "name": "mysql_jdbc_sink_products",
+    "config": {
+        "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql_jdbc_products",
+        "connection.url": "jdbc:mysql://localhost:3306/om_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "insert.mode": "upsert",
+        "pk.mode": "record_key",
+        "pk.fields": "product_id",
+        "delete.enabled": "true",
+        "table.name.format": "products_sink",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- orders_sink용 sink connector를 위해서 아래 설정을 mysql_jdbc_sink_orders.json 파일에 저장.
+
+```json
+{
+    "name": "mysql_jdbc_sink_orders",
+    "config": {
+        "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql_jdbc_orders",
+        "connection.url": "jdbc:mysql://localhost:3306/om_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "insert.mode": "upsert",
+        "pk.mode": "record_key",
+        "pk.fields": "order_id",
+        "delete.enabled": "true",
+        "table.name.format": "orders_sink",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
 }
 ```
