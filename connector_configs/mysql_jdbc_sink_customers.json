@@ -1,0 +1,18 @@
+{
+    "name": "mysql_jdbc_sink_customers",
+    "config": {
+        "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql_jdbc_customers",
+        "connection.url": "jdbc:mysql://localhost:3306/om_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "insert.mode": "upsert",
+        "pk.mode": "record_key",
+        "pk.fields": "customer_id",
+        "delete.enabled": "true",
+        "table.name.format": "customers_sink",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}

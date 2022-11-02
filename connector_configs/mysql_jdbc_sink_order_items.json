@@ -1,0 +1,18 @@
+{
+    "name": "mysql_jdbc_sink_order_items",
+    "config": {
+        "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql_jdbc_order_items",
+        "connection.url": "jdbc:mysql://localhost:3306/om_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "insert.mode": "upsert",
+        "pk.mode": "record_key",
+        "pk.fields": "order_id, line_item_id",
+        "delete.enabled": "true",
+        "table.name.format": "order_items_sink",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
