@@ -307,11 +307,11 @@ update order_items set quantity=2, system_upd=now() where order_id = 2;
 
 - Topic 메시지의 Key값에 해당하는 Value가 Null이면 Sink Connector는 Key값에 해당하는 PK가 가리키는 레코드를 삭제함.
 - JDBC Source Connector는 Delete 메시지를 보낼 수 없으므로 kafkacat으로 Delete 메시지를 시뮬레이션 하기 위해 특정 key값을 가지는 메시지의 value를 Null로 만듬.
-- mysql_jdbc_source_customers토픽에서 customer_id=3인 데이터의 Key값을 찾아서 해당 Key값으로 Value를 Null로 설정.
+- mysql_jdbc_customers토픽에서 customer_id=3인 데이터의 Key값을 찾아서 해당 Key값으로 Value를 Null로 설정.
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_jdbc_source_customers -C -J -e |  grep -v '% Reached' | jq '.'
-echo '{"schema":{"type":"int32","optional":false},"payload":3}#' | kafkacat -b localhost:9092 -P -t mysql_jdbc_source_customers -Z -K#
+kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e |  grep -v '% Reached' | jq '.'
+echo '{"schema":{"type":"int32","optional":false},"payload":3}#' | kafkacat -b localhost:9092 -P -t mysql_jdbc_customers -Z -K#
 ```
 
 - mysql_jdbc_sink_customers Connector가 기동되어 있는지 확인
