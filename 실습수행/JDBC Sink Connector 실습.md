@@ -297,7 +297,7 @@ use om;
 
 update products set product_category='updated_category', system_upd=now() where product_id = 2;
 
-update orders set order_status='upd_status', system_upd=now() where order_id = 2;
+update orders set order_status='updated_status', system_upd=now() where order_id = 2;
 
 update order_items set quantity=2, system_upd=now() where order_id = 2;
 
@@ -306,13 +306,96 @@ update order_items set quantity=2, system_upd=now() where order_id = 2;
 ### 레코드 삭제 테스트
 
 - Topic 메시지의 Key값에 해당하는 Value가 Null이면 Sink Connector는 Key값에 해당하는 PK가 가리키는 레코드를 삭제함.
-- JDBC Source Connector는 Delete 메시지를 보낼 수 없으므로 kafkacat으로 Delete 메시지를 시뮬레이션 하기 위해 특정 key값을 가지는 메시지의 value를 Null로 만듬. mysql_om_smt_customers Topic에서 customer_id=3인 데이터의 Key값을 찾아서 해당 Key값으로 Value를 Null로 설정.
+- 레코드 삭제 테스트를 위해 별도의 Source 테이블과  생성Source Connector를 생성.
 
-```bash
-echo '{"schema":{"type":"int32","optional":false},"payload":3}#' | kafkacat -b localhost:9092 -P -t mysql_om_smt_customers -Z -K#
+```sql
+use om;
+
+-- 아래 Create Table 스크립트수행.
+CREATE TABLE customers_test (
+customer_id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+email_address varchar(255) NOT NULL,
+full_name varchar(255) NOT NULL,
+system_upd timestamp NOT NULL
+) ENGINE=InnoDB ;
+
+# update용 system_upd 컬럼에 인덱스 생성. 
+create index idx_customers_test_001 on customers_test(system_upd);
+
+use om_sink;
+
+-- 아래 Create Table 스크립트수행.
+CREATE TABLE customers_test_sink (
+customer_id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+email_address varchar(255) NOT NULL,
+full_name varchar(255) NOT NULL,
+system_upd timestamp NOT NULL
+) ENGINE=InnoDB ;
+
+# update용 system_upd 컬럼에 인덱스 생성. 
+create index idx_customers_test_sink_001 on customers_test_sink(system_upd);
 ```
 
-- mysql_jdbc_sink_01 Connector가 기동되어 있는지 확인
+- 레코드 삭제 테스트를 위해 별도의 Source Connector를  mysql_jdbc_source_customers_test.json으로 생성
+
+```sql
+{
+    "name": "mysql_jdbc_source_customers_test",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_jdbc_source_",
+        "table.whitelist": "customers_test",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp+incrementing",
+        "incrementing.column.name": "customer_id",
+        "timestamp.column.name": "system_upd",
+        "transforms": "create_key, extract_key",
+        "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.create_key.fields": "customer_id",
+        "transforms.extract_key.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extract_key.field": "customer_id"
+    }
+}
+```
+
+- 레코드 삭제 테스트를 위해 별도의 Sink Connector를 mysql_jdbc_sink_customers_test.json으로 생성
+
+```sql
+{
+    "name": "mysql_jdbc_sink_customers_test",
+    "config": {
+        "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql_jdbc_customers_test",
+        "connection.url": "jdbc:mysql://localhost:3306/om_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "insert.mode": "upsert",
+        "pk.mode": "record_key",
+        "pk.fields": "customer_id",
+        "delete.enabled": "true",
+        "table.name.format": "customers_test_sink",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- mysql_jdbc_sink_customers_test Sink Connector를 기동하여 데이터가 복제 되는지 확인
+
+- JDBC Source Connector는 Delete 메시지를 보낼 수 없으므로 kafkacat으로 Delete 메시지를 시뮬레이션 하기 위해 특정 key값을 가지는 메시지의 value를 Null로 만듬.
+- mysql_jdbc_source_customers_test 토픽에서 customer_id=3인 데이터의 Key값을 찾아서 해당 Key값으로 Value를 Null로 설정.
+
+```bash
+kafkacat -b localhost:9092 -t mysql_jdbc_source_customers_test -C -J -e |  grep -v '% Reached' | jq '.'
+echo '{"schema":{"type":"int32","optional":false},"payload":3}#' | kafkacat -b localhost:9092 -P -t mysql_jdbc_source_customers_tes -Z -K#
+```
+
+- mysql_jdbc_sink Connector가 기동되어 있는지 확인
 
 ```sql
 http GET http://localhost:8083/connectors
