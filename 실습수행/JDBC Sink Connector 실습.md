@@ -347,7 +347,7 @@ create index idx_customers_test_sink_001 on customers_test_sink(system_upd);
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_jdbc_source_",
+        "topic.prefix": "mysql_jdbc_",
         "table.whitelist": "customers_test",
         "poll.interval.ms": 10000,
         "mode": "timestamp+incrementing",
