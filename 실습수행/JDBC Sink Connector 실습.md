@@ -268,7 +268,7 @@ insert into order_items (order_id, line_item_id, product_id, unit_price, quantit
 
 ### 레코드 업데이트 테스트
 
-- 소스 DB(om)에서 customers테이블의 customer_id = 1인 레코드의  full_name을 sinktest_name으로 변경
+- 소스 DB(om)에서 customers테이블의 customer_id = 1인 레코드의  full_name을 updated_name으로 변경
 
 ```sql
 use om;
