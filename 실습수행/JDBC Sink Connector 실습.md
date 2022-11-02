@@ -262,7 +262,7 @@ insert into order_items(order_id, line_item_id, product_id, unit_price, quantity
   values (2, 1, 2, 200, 1, now());
 insert into order_items (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
   values (2, 2, 3, 300, 1, now());
-insert into order_itemsst (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
+insert into order_items (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
   values (3, 1, 1, 100, 1, now());
 ```
 
