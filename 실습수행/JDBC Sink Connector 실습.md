@@ -240,29 +240,29 @@ http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
 use om;
 
 -- customers 테이블에 데이터 입력
-insert into customers_test (email_address, full_name, system_upd) 
+insert into customers (email_address, full_name, system_upd) 
   values ('testaddress_03@testdomain', 'testuser_03', now());
-insert into customers_test (email_address, full_name, system_upd) 
+insert into customers (email_address, full_name, system_upd) 
   values ('testaddress_04@testdomain', 'testuser_04', now());
 
 -- products 테이블에 데이터 입력
-insert into products_test (product_name, product_category, unit_price, system_upd)
+insert into products (product_name, product_category, unit_price, system_upd)
   values ('test_products_02', 'test_category', 200, now());
-insert into products_test (product_name, product_category, unit_price, system_upd)
+insert into products (product_name, product_category, unit_price, system_upd)
   values ('test_products_03', 'test_category', 300, now());
 
 -- orders 테이블에 데이터 입력
-insert into orders_test (order_datetime, customer_id, order_status, store_id, system_upd)
+insert into orders (order_datetime, customer_id, order_status, store_id, system_upd)
   values (now(), 1, 'delivered', 1, now());
-insert into orders_test (order_datetime, customer_id, order_status, store_id, system_upd)
+insert into orders (order_datetime, customer_id, order_status, store_id, system_upd)
   values (now(), 2, 'delivered', 2, now());
 
 -- order_items 테이블에 데이터 입력
-insert into order_items_test (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
+insert into order_items(order_id, line_item_id, product_id, unit_price, quantity, system_upd)
   values (2, 1, 2, 200, 1, now());
-insert into order_items_test (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
+insert into order_items (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
   values (2, 2, 3, 300, 1, now());
-insert into order_items_test (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
+insert into order_itemsst (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
   values (3, 1, 1, 100, 1, now());
 ```
 
