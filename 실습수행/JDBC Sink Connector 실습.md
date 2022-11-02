@@ -273,7 +273,7 @@ insert into order_items (order_id, line_item_id, product_id, unit_price, quantit
 ```sql
 use om;
 
-update customers set full_name='sinktest_name', system_upd=now() where customer_id=1;
+update customers set full_name='updated_name', system_upd=now() where customer_id=1;
 ```
 
 - 변경 후 sink DB에서 해당 레코드가 성공적으로 Update 되었는지 확인
@@ -282,6 +282,25 @@ update customers set full_name='sinktest_name', system_upd=now() where customer_
 use om_sink;
 
 select * from customers_sink;
+```
+
+- mysql_jdbc_source_customers 토픽의 메시지 내용 확인
+
+```bash
+kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Received' | jq '.'
+```
+
+- 다른 테이블도 Update 테스트 수행후 Sink DB에서 성공적으로 Update 되었는지 확인
+
+```sql
+use om;
+
+update products set product_category='updated_category', system_upd=now() where product_id = 2;
+
+update orders set order_status='updated_status', system_upd=now() where order_id = 2;
+
+update order_items set quantity=2, system_upd=now() where order_id = 2;
+
 ```
 
 ### 레코드 삭제 테스트
