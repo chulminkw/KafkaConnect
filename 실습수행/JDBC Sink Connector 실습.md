@@ -185,8 +185,9 @@ http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_customers_00
 http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
 ```
 
-### 다른 테이블에 대해서도 Sink Connector 생성
+### Source 테이블과 연계하여 Sink 테이블에 데이터 연동 테스트
 
+- 다른 테이블에 대해서도 Sink Connector를 생성하고 Source 테이블에 데이터 입력하여 Sink(Target) 테이블에 데이터가 동기화 되는지 확인.
 - products_sink용 sink connector를 위해서 아래 설정을 mysql_jdbc_sink_products.json 파일에 저장.
 
 ```json
@@ -232,6 +233,8 @@ http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
     }
 }
 ```
+
+- om 데이터베이스의 테이블들에 데이터 insert 후 om_sink 데이터베이스의 테이블들에 동기화 입력 되는지 확인
 
 ### 레코드 업데이트 테스트
 
