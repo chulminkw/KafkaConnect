@@ -236,6 +236,36 @@ http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
 
 - om 데이터베이스의 테이블들에 데이터 insert 후 om_sink 데이터베이스의 테이블들에 동기화 입력 되는지 확인
 
+```sql
+use om;
+
+-- customers 테이블에 데이터 입력
+insert into customers_test (email_address, full_name, system_upd) 
+  values ('testaddress_03@testdomain', 'testuser_03', now());
+insert into customers_test (email_address, full_name, system_upd) 
+  values ('testaddress_04@testdomain', 'testuser_04', now());
+
+-- products 테이블에 데이터 입력
+insert into products_test (product_name, product_category, unit_price, system_upd)
+  values ('test_products_02', 'test_category', 200, now());
+insert into products_test (product_name, product_category, unit_price, system_upd)
+  values ('test_products_03', 'test_category', 300, now());
+
+-- orders 테이블에 데이터 입력
+insert into orders_test (order_datetime, customer_id, order_status, store_id, system_upd)
+  values (now(), 1, 'delivered', 1, now());
+insert into orders_test (order_datetime, customer_id, order_status, store_id, system_upd)
+  values (now(), 2, 'delivered', 2, now());
+
+-- order_items 테이블에 데이터 입력
+insert into order_items_test (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
+  values (2, 1, 2, 200, 1, now());
+insert into order_items_test (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
+  values (2, 2, 3, 300, 1, now());
+insert into order_items_test (order_id, line_item_id, product_id, unit_price, quantity, system_upd)
+  values (3, 1, 1, 100, 1, now());
+```
+
 ### 레코드 업데이트 테스트
 
 - 소스 DB(om)에서 customers테이블의 customer_id = 1인 레코드의  full_name을 sinktest_name으로 변경
