@@ -118,7 +118,7 @@ http POST http://localhost:8083/connectors @mysql_jdbc_sink_00.json
 - mysql_jdbc_customers 토픽의 메시지 확인
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Received' | jq '.'
+kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Reached' | jq '.'
 ```
 
 - auto.create로 테이블을 자동 생성하는 것은 바람직하지 않음. 테이블 관리를 위해서라도 DB에서 테이블을 먼저 생성한 뒤에 토픽에서 DB 테이블로 Sink 권장
@@ -287,7 +287,7 @@ select * from customers_sink;
 - mysql_jdbc_source_customers 토픽의 메시지 내용 확인
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Received' | jq '.'
+kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Reached' | jq '.'
 ```
 
 - 다른 테이블도 Update 테스트 수행후 Sink DB에서 성공적으로 Update 되었는지 확인
