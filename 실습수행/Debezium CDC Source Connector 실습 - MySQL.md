@@ -44,7 +44,7 @@ grant SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *
 grant all privileges on information_schema.* to 'connect_dev'@'%' with grant option;
 grant all privileges on performance_schema.* to 'connect_dev'@'%' with grant option;
 
-flush 
+flush privileges;
 ```
 
 - 또는 아래와 같이 모든 권한을 connect_dev 사용자에게 부여
