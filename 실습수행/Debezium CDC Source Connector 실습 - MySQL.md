@@ -10,10 +10,10 @@
 - lib 디렉토리에 jar 파일 있는것을 확인하고 lib 디렉토리를 cdc_source_connector로 이름을 변경한 뒤 plugin.path 디렉토리로 이전
 
 ```bash
-unzip debezium-debezium-connector-mysql-1.9.6.zip
-cd debezium-debezium-connector-mysql-1.9.6
-mv lib cdc_source_connector
-cp -r cdc_source_connector ~/connector_plugins
+unzip debezium-debezium-connector-mysql-1.9.7.zip
+cd debezium-debezium-connector-mysql-1.9.7
+mv lib mysql_cdc_source_connector
+cp -r my_sql_cdc_source_connector ~/connector_plugins
 ```
 
 - Connect를 재 기동하고 아래 명령어로 debezium connector plugin이 로딩되었는지 확인
