@@ -41,7 +41,7 @@ flush privileges;
 ```sql
 --grant SUPER, REPLICATION CLIENT, REPLICATION SLAVE, RELOAD on *.* to 'connect_dev'@'%' with grant option;
 
-grant SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'connect_dev' with grant option;
+grant SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'connect_dev'@'%' with grant option;
 
 flush privileges;
 ```
