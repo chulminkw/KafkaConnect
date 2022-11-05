@@ -39,8 +39,8 @@ flush privileges;
 - 반드시 connect_dev 사용자에게 아래 권한을 부여해야 함.
 
 ```sql
-grant SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'connect_dev' with grant option;
 --grant SUPER, REPLICATION CLIENT, REPLICATION SLAVE, RELOAD on *.* to 'connect_dev'@'%' with grant option;
+grant SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'connect_dev' with grant option;
 grant all privileges on information_schema.* to 'connect_dev'@'%' with grant option;
 grant all privileges on performance_schema.* to 'connect_dev'@'%' with grant option;
 
