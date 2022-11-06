@@ -221,7 +221,7 @@ select * from order_items_sink;
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "dbserver1.oc.customers",
+        "topics": "test01.oc.customers",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
@@ -242,7 +242,15 @@ select * from order_items_sink;
 http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
 ```
 
+- connect console에서 로그 메시지를 확인하면 Sink Connector가 수행되지 않고 오류가 발생함을 확인
+
+### Update와 Delete 시에 메시지 확인
+
+- 소스 테이블에 update와 Delete 수행 후에 메시지 확인
+
 ### Source에서 ExtractNewRecordState SMT 적용하여 After 메시지만 생성.
+
+- ExtractNewRecordStateSMT를 적용하여 환경설정. 아래 내용을 mysql_cdc_oc_source_01.json 파일에 저장
 
 ```json
 {
@@ -250,16 +258,16 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
     "config": {
         "connector.class": "io.debezium.connector.mysql.MySqlConnector",
         "tasks.max": "1",
-        "database.hostname": "192.168.56.101",
+        "database.hostname": "localhost",
         "database.port": "3306",
         "database.user": "connect_dev",
         "database.password": "connect_dev",
-        "database.server.id": "100001",
-        "database.server.name": "test02",
+        "database.server.id": "10001",
+        "database.server.name": "mysql01",
         "database.include.list": "oc",
-        "database.allowPublicKeyRetrieval": "true",
-        "database.history.kafka.bootstrap.servers": "192.168.56.101:9092",
-        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "table.include.list": "customers, products, orders, order_items", 
+        "database.history.kafka.bootstrap.servers": "localhost:9092",
+        "database.history.kafka.topic": "schema-changes.mysql01.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
 
@@ -269,6 +277,22 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
     }
 }
 ```
+
+- 해당 설정을 Connect로 등록하여 신규 connector 생성.
+
+```sql
+http POST http://localhost:8083/connectors @mysql_cdc_oc_source_01.json
+```
+
+- 토픽 메시지 확인
+
+```sql
+kafkacat -b localhost:9092 -t mysql01.oc.customers -C -J -e|jq '.'
+# 또는 
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql01.oc.customers --from-beginning --property print.key=true| jq '.'
+```
+
+### 
 
 ### CDC Source Connector의 메시지 생성 시 K
 
