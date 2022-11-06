@@ -129,7 +129,7 @@ select * from order_items;
 - 해당 설정을 Connect로 등록하여 신규 connector 생성.
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_cdc_oc_source_00.json
+http POST http://localhost:8083/connectors @mysql_cdc_oc_source_test.json
 ```
 
 - 데이터를 customers 테이블에 입력한 뒤 토픽과 메시지 생성 확인
@@ -151,9 +151,9 @@ delete customers where customer_id = 2;
 - 토픽 메시지 확인
 
 ```sql
-kafkacat -b localhost:9092 -t dbserver1.oc.customers -C -J -e|jq '.'
+kafkacat -b localhost:9092 -t test01.oc.customers -C -J -e|jq '.'
 # 또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic dbserver1.oc.customers --from-beginning --property print.key=true| jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic test01.oc.customers --from-beginning --property print.key=true| jq '.'
 ```
 
 ### JDBC Sink Connector로 데이터 동기화 실습 - Source에서 ExtractNewRecordState SMT 적용 없는 메시지
