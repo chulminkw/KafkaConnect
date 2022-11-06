@@ -102,11 +102,11 @@ select * from order_items;
 ### CDC Source Connector 생성해보기 - ExtractNewRecordState SMT 적용 없이 생성
 
 - oc 데이터베이스의 모든 테이블들에 대한 변경 데이터를 가져오는 Source Connector 생성
-- MySQL 기동을 확인 후에 아래와 같은 설정을 mysql_cdc_oc_source_test.json에 저장
+- MySQL 기동을 확인 후에 아래와 같은 설정을 mysql_cdc_oc_source_test01.json에 저장
 
 ```json
 {
-    "name": "mysql_cdc_oc_source_test",
+    "name": "mysql_cdc_oc_source_test01",
     "config": {
         "connector.class": "io.debezium.connector.mysql.MySqlConnector",
         "tasks.max": "1",
@@ -119,7 +119,7 @@ select * from order_items;
         "database.include.list": "oc",
         "database.allowPublicKeyRetrieval": "true",
         "database.history.kafka.bootstrap.servers": "192.168.56.101:9092",
-        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "database.history.kafka.topic": "test01-schema-changes.mysql.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
@@ -129,7 +129,7 @@ select * from order_items;
 - 해당 설정을 Connect로 등록하여 신규 connector 생성.
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_cdc_oc_source_test.json
+http POST http://localhost:8083/connectors @mysql_cdc_oc_source_test01.json
 ```
 
 - 데이터를 customers 테이블에 입력한 뒤 토픽과 메시지 생성 확인
