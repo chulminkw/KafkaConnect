@@ -99,10 +99,10 @@ select * from orders;
 select * from order_items;
 ```
 
-### CDC Source Connector 생성해보기 - 01
+### CDC Source Connector 생성해보기 - ExtractNewRecordState SMT 적용 없이 생성
 
 - oc 데이터베이스의 모든 테이블들에 대한 변경 데이터를 가져오는 Source Connector 생성
-- MySQL 기동을 확인 후에 아래와 같은 설정을 mysql_cdc_oc_source_00.json에 저장
+- MySQL 기동을 확인 후에 아래와 같은 설정을 mysql_cdc_oc_source_test.json에 저장
 
 ```json
 {
@@ -138,9 +138,14 @@ http POST http://localhost:8083/connectors @mysql_cdc_oc_source_00.json
 use oc;
 
 insert into customers values (1, 'testaddress_01@testdomain', 'testuser_01');
+insert into customers values (2, 'testaddress_02@testdomain', 'testuser_02');
 insert into orders values(1, now(), 1, 'delivered', 1);
 insert into products values(1, 'testproduct', 'testcategory', 100);
 insert into order_items values(1, 1, 1, 100, 1);
+
+update customers set fullname='updateduser_01' where customer_id = 2;
+
+delete customers where customer_id = 2;
 ```
 
 - 토픽 메시지 확인
@@ -151,8 +156,9 @@ kafkacat -b localhost:9092 -t dbserver1.oc.customers -C -J -e|jq '.'
 kafka-console-consumer --bootstrap-server localhost:9092 --topic dbserver1.oc.customers --from-beginning --property print.key=true| jq '.'
 ```
 
-### JDBC Sink Connector로 데이터 동기화 실습
+### JDBC Sink Connector로 데이터 동기화 실습 - Source에서 ExtractNewRecordState SMT 적용 없는 메시지
 
+- Debezium Source Connector의 메시지를 그대로 생성하면 JDBC Sink Connector는 해당 포맷을 해석할 수 없으므로 데이터 입력처리 불가
 - mysql -u root -p 로 접속하여 oc_sink DB 생성하고 connect_dev 사용자에게 권한 부여.
 
 ```sql
@@ -234,6 +240,34 @@ select * from order_items_sink;
 
 ```sql
 http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
+```
+
+### Source에서 ExtractNewRecordState SMT 적용하여 After 메시지만 생성.
+
+```json
+{
+    "name": "mysql_cdc_oc_source_01",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "192.168.56.101",
+        "database.port": "3306",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.server.id": "100001",
+        "database.server.name": "test02",
+        "database.include.list": "oc",
+        "database.allowPublicKeyRetrieval": "true",
+        "database.history.kafka.bootstrap.servers": "192.168.56.101:9092",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+    }
+}
 ```
 
 ### CDC Source Connector의 메시지 생성 시 K
