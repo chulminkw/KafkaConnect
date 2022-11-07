@@ -145,7 +145,7 @@ insert into order_items values(1, 1, 1, 100, 1);
 
 update customers set full_name='updateduser_01' where customer_id = 2;
 
-delete customers where customer_id = 2;
+delete from customers where customer_id = 2;
 ```
 
 - 토픽 메시지 확인
@@ -265,9 +265,9 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
         "database.server.id": "10001",
         "database.server.name": "mysql-01",
         "database.include.list": "oc",
-        "table.include.list": "customers, products, orders, order_items", 
+        "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items", 
         "database.history.kafka.bootstrap.servers": "localhost:9092",
-        "database.history.kafka.topic": "schema-changes.mysql01.oc",
+        "database.history.kafka.topic": "schema-changes.mysql-01.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
 
@@ -289,7 +289,7 @@ http POST http://localhost:8083/connectors @mysql_cdc_oc_source_01.json
 ```sql
 kafkacat -b localhost:9092 -t mysql01.oc.customers -C -J -e|jq '.'
 # 또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql01.oc.customers --from-beginning --property print.key=true| jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql-01.oc.customers --from-beginning --property print.key=true| jq '.'
 ```
 
 - JDBC Sink Connector 신규 생성. 아래 설정을 mysql_jdbc_oc_sink_customers_01.json 파일에 저장
