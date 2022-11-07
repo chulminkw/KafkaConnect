@@ -143,7 +143,7 @@ insert into orders values(1, now(), 1, 'delivered', 1);
 insert into products values(1, 'testproduct', 'testcategory', 100);
 insert into order_items values(1, 1, 1, 100, 1);
 
-update customers set fullname='updateduser_01' where customer_id = 2;
+update customers set full_name='updateduser_01' where customer_id = 2;
 
 delete customers where customer_id = 2;
 ```
