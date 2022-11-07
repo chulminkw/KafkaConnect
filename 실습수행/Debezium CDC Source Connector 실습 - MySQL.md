@@ -248,6 +248,8 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
 
 - 소스 테이블에 update와 Delete 수행 후에 메시지 확인
 
+### 
+
 ### Source에서 ExtractNewRecordState SMT 적용하여 After 메시지만 생성.
 
 - ExtractNewRecordStateSMT를 적용하여 환경설정. 아래 내용을 mysql_cdc_oc_source_01.json 파일에 저장
@@ -323,6 +325,85 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_01.json
 
 - 소스 테이블의 데이터가 제대로 Sink 되는지 oc_sink 내의 테이블 확인
 
+### products, orders, order_items 테이블용 JDBC Sink Connector 생성
+
+- 아래 설정을 mysql_jdbc_oc_sink_products_01.json으로 저장.
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_products_01",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql-01.oc.products",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "products_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "product_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- 아래 설정을 mysql_jdbc_oc_sink_orders_01.json으로 저장.
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_orders_01",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql-01.oc.orders",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "customers_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- 아래 설정을 mysql_jdbc_oc_sink_order_items_01.json으로 저장.
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_order_items_01",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql-01.oc.order_items",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "order_items_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id, line_item_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- products_sink, orders_sink, order_items_sink용 JDBC Sink Connector를 생성.
+
+```sql
+http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_products_01.json
+http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_orders_01.json
+http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_order_items_01.json
+```
+
 ### Debezium Source Connector와 JDBC Sink Connector 연동 테스트
 
 - 기존 Source 테이블에 있는 모든 데이터를 삭제.  연동이 제대로 되어 있으면 Source 테이블에만 delete 적용해도 target 테이블도 같이 적용. 만일 Source 테이블에 Truncate를 적용하였으면 Target쪽에도 수동으로 SQL을 통해 Truncate 적용.
@@ -377,7 +458,7 @@ DELIMITER ;
 
 - products 테이블을 아래와 같이 수동으로 생성.
 
-```json
+```sql
 insert into products values(1, 'testproduct_01', 'testcategory_01', 100);
 insert into products values(2, 'testproduct_02', 'testcategory_02', 200);
 insert into products values(3, 'testproduct_03', 'testcategory_03', 300);
