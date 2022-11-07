@@ -263,7 +263,7 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
         "database.user": "connect_dev",
         "database.password": "connect_dev",
         "database.server.id": "10001",
-        "database.server.name": "mysql01",
+        "database.server.name": "mysql-01",
         "database.include.list": "oc",
         "table.include.list": "customers, products, orders, order_items", 
         "database.history.kafka.bootstrap.servers": "localhost:9092",
@@ -292,100 +292,41 @@ kafkacat -b localhost:9092 -t mysql01.oc.customers -C -J -e|jq '.'
 kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql01.oc.customers --from-beginning --property print.key=true| jq '.'
 ```
 
-### 
+- JDBC Sink Connector 신규 생성. 아래 설정을 mysql_jdbc_oc_sink_customers_01.json 파일에 저장
 
-### CDC Source Connector의 메시지 생성 시 K
-
-```sql
-DELIMITER $$
-
-DROP PROCEDURE IF EXISTS oc.CONNECT_INSERT_TEST$$
-
-create procedure CONNECT_INSERT_TEST(
-	repeat_cnt INTEGER
-)
-BEGIN
-	DECLARE customer_idx INTEGER;
-	DECLARE product_idx INTEGER;
-  DECLARE product_idx_start INTEGER;
-  DECLARE order_idx INTEGER;
-  DECLARE line_item_idx INTEGER;
-  DECLARE iter_idx_01 INTEGER;
-  DECLARE iter_idx_02 INTEGER;
-
-  select ifnull(max(customer_id), 0)+1 INTO customer_idx from oc.customers;
-	select ifnull(max(order_id), 0) + 1 INTO order_idx from oc.orders;
-  select ifnull(max(product_id), 0) + 1 INTO product_idx_start from oc.products;
-
-  SET iter_idx_01 = 1;
-  SET iter_idx_02 = 1; 
-  SET product_idx = product_idx_start; 
-  
-  WHILE iter_idx_01 <= repeat_cnt/10 DO
-    SET product_idx = product_idx + iter_idx_01;
-    
-    insert into oc.products values (product_idx, concat('testproduct_', product_idx),
-                                    concat('testcategory_', product_idx), 100*iter_idx_01); 
-  END WHILE;
-
-	WHILE iter_idx_02 <= repeat_cnt DO
-    SET customer_idx = customer_idx + iter_idx_02;
-    SET order_idx = order_idx + iter_idx_02;
-    
-    insert into oc.customers values (customer_idx, concat('testuser_', 
-                     customer_idx),  concat('testuser_', customer_idx));
-    insert into oc.orders values (order_idx, now(), customer_idx, 'delivered', 1);
-    
-    SET product_idx =  product_idx_start + mod(iter_idx_02, 10);  
-    insert into oc.order_items values (order_idx, product_idx, product_idx, 100* iter_idx_02/10, 1); 
-    
-    SET iter_idx_02 = iter_idx_02 + 1;
-  END WHILE;
-END$$
-
-DELIMITER ;
+```json
+{
+    "name": "mysql_jdbc_oc_sink_customers_01",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql-01.oc.customers",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "customers_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "customer_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
 ```
 
+- 해당 설정을 Connect로 등록하여 신규 connector 생성.
+
 ```sql
-DELIMITER $$
-
-DROP PROCEDURE IF EXISTS oc.CONNECT_INSERT_TEST$$
-
-create procedure CONNECT_INSERT_TEST(
-	repeat_cnt INTEGER
-)
-BEGIN
-	DECLARE customer_idx INTEGER;
-	DECLARE product_idx INTEGER;
-  DECLARE product_idx_start INTEGER;
-  DECLARE order_idx INTEGER;
-  DECLARE line_item_idx INTEGER;
-  DECLARE iter_idx_01 INTEGER;
-  DECLARE iter_idx_02 INTEGER;
-
-  select ifnull(max(customer_id), 0)+1 INTO customer_idx from oc.customers;
-	select ifnull(max(order_id), 0) + 1 INTO order_idx from oc.orders;
-
-  SET iter_idx_02 = 1; 
-
- 
-	WHILE iter_idx_02 <= repeat_cnt DO
-    SET customer_idx = customer_idx + iter_idx_02;
-    SET order_idx = order_idx + iter_idx_02;
-    
-    insert into oc.customers values (customer_idx, concat('testuser_', 
-                     customer_idx),  concat('testuser_', customer_idx));
-    insert into oc.orders values (order_idx, now(), customer_idx, 'delivered', 1);
-    
-    
-    insert into oc.order_items values (order_idx, mod(iter_idx_02, 10), mod(iter_idx_02, 10), 100* iter_idx_02/10, 1); 
-    
-    SET iter_idx_02 = iter_idx_02 + 1;
-  END WHILE;
-END$$
-
-DELIMITER ;
+http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_01.json
 ```
+
+- 소스 테이블의 데이터가 제대로 Sink 되는지 oc_sink 내의 테이블 확인
+
+### Debezium Source Connector와 JDBC Sink Connector 연동 테스트
+
+- 기존 Source 테이블에 있는 모든 데이터를 삭제.  연동이 제대로 되어 있으면 Source 테이블에만 delete 적용해도 target 테이블도 같이 적용. 만일 Source 테이블에 Truncate를 적용하였으면 Target쪽에도 수동으로 SQL을 통해 Truncate 적용.
+- DML 테스트를 위해 아래의 Procedure를 생성. 아래 Procedure는 repeat_cnt만큼 데이터를 insert 수행.  repeat_cnt 만큼 반복 insert 수행중 upd_mod
 
 ```sql
 use oc;
@@ -419,7 +360,7 @@ BEGIN
     
     insert into oc.orders values (order_idx, now(), customer_idx, 'delivered', 1);
        
-    insert into oc.order_items values (order_idx, mod(iter_idx, 10), mod(iter_idx, 10), 100* iter_idx/10, 1); 
+    insert into oc.order_items values (order_idx, mod(iter_idx, upd_mod)+1, mod(iter_idx, upd_mod)+1, 100* iter_idx/upd_mod, 1); 
     
 		if mod(iter_idx, upd_mod) = 0 then
        update oc.customers set full_name = concat('updateduser_', customer_idx) where customer_id = customer_idx;
@@ -432,6 +373,20 @@ BEGIN
 END$$
 
 DELIMITER ;
+```
+
+- products 테이블을 아래와 같이 수동으로 생성.
+
+```json
+insert into products values(1, 'testproduct_01', 'testcategory_01', 100);
+insert into products values(2, 'testproduct_02', 'testcategory_02', 200);
+insert into products values(3, 'testproduct_03', 'testcategory_03', 300);
+insert into products values(4, 'testproduct_04', 'testcategory_04', 400);
+insert into products values(5, 'testproduct_05', 'testcategory_05', 500);
+insert into products values(6, 'testproduct_06', 'testcategory_06', 600);
+insert into products values(7, 'testproduct_07', 'testcategory_07', 700);
+insert into products values(8, 'testproduct_08', 'testcategory_08', 800);
+insert into products values(9, 'testproduct_09', 'testcategory_09', 900);
 ```
 
 ```sql
