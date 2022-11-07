@@ -362,7 +362,7 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_01.json
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "customers_sink",
+        "table.name.format": "orders_sink",
         "insert.mode": "upsert",
         "pk.fields": "order_id",
         "pk.mode": "record_key",
