@@ -88,8 +88,7 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
 kafkacat -b localhost:9092 -C -t mysql_om_customers -J -q -u | jq '.'
 #또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_customers --from-beginning
---property --print.key=true | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_customers --from-beginning --property --print.key=true | jq '.'
 ```
 
 - customers에 두번째 샘플 데이터 입력하고 consumer에서 메시지 확인.
