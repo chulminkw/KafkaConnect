@@ -4,11 +4,11 @@
 
 ## MySQL 설치
 
-- sudo apt update 로 실습 VM Package update 먼저 적용후 mysql-server 설치
+- sudo apt update 로 실습 VM Package update & upgrade 먼저 적용후 mysql 설치
 
 ```bash
-sudo apt-get update
-sudo apt-get install mysql-server
+sudo apt-get update && sudo apt-get upgrade
+sudo apt-get install mysql-server mysql-client
 ```
 
 - mysql 설치 버전 확인하고 접속 port 오픈
