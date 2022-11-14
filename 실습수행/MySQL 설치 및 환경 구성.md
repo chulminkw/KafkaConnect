@@ -25,9 +25,9 @@ sudo ufw allow mysql
 # mysql client 수행하여 접속
 sudo mysql
 # mysql root 패스워드 변경
-mysql> create user 'root'@'%' identified with mysql_native_password by 'root';
-mysql> grant all privileges on *.* to 'root'@'%' with grant option;
-mysql> flush privileges;
+alter user 'root'@'%' identified with mysql_native_password by 'root';
+grant all privileges on *.* to 'root'@'%' with grant option;
+flush privileges;
 ```
 
 - mysql에 root 사용자로 방금 생성한 패스워드 입력하여 접속 확인
