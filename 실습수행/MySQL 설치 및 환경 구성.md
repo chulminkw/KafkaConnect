@@ -11,13 +11,6 @@ sudo apt-get update
 sudo apt-get install mysql-server
 ```
 
-- 외부 IP에서 접속 허용할 수 있도록 mysql.conf.d 수정
-
-```bash
-cd /etc/mysql/mysql.conf.d
-sudo vi mysqld.cnf
-```
-
 - mysql 설치 버전 확인하고 접속 port 오픈
 
 ```bash
