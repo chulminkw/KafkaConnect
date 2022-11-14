@@ -199,7 +199,7 @@ update customers set full_name='new_updated_name' where customer_id = 4;
 update customers set full_name='new_updated_name', system_upd=now() where customer_id=4;
 ```
 
-### 여러개의 테이블들을 Source Connector에 설정
+### Bulk mode로 JDBC Source Connector 생성
 
 - 새로운 connector이름인 mysql_jdbc_om_source_bulk로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_bulk.json 파일명으로 설정 저장
 
