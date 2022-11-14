@@ -86,9 +86,9 @@ insert into customers values (1, 'testaddress_01@testdomain', 'testuser_01', now
 ```sql
 kafka-topics --bootstrap-server localhost:9092 --list
 
-kafkacat -b localhost:9092 -C -t mysql_inc_om_customers -J -q -u | jq '.'
+kafkacat -b localhost:9092 -C -t mysql_om_customers -J -q -u | jq '.'
 #또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_inc_om_customers --from-beginning
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_customers --from-beginning
 --property --print.key=true | jq '.'
 ```
 
