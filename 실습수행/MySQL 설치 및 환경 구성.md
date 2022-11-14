@@ -4,11 +4,16 @@
 
 ## MySQL 설치
 
-- sudo apt update 로 실습 VM Package update & upgrade 먼저 적용후 mysql 설치
+- sudo apt update 로 실습 VM Package update 먼저 적용후 mysql 설치
 
 ```bash
 sudo apt-get update && sudo apt-get upgrade
 sudo apt-get install mysql-server mysql-client
+```
+
+```bash
+cd /etc/mysql/mysql.conf.d
+sudo vi mysqld.cnf
 ```
 
 - mysql 설치 버전 확인하고 접속 port 오픈
@@ -32,7 +37,7 @@ mysql> flush privileges;
 - mysql에 root 사용자로 방금 생성한 패스워드 입력하여 접속 확인
 
 ```bash
-mysql -u root -p
+sudo mysql -u root -p
 ```
 
 - 필요하다면 시스템 기동시 mysql도 함께 기동 등록
@@ -46,7 +51,7 @@ sudo systemctl enable mysql
 - root로 접속하여 새로운 Database로 om 생성
 
 ```sql
-mysql -u root -p
+sudo mysql -u root -p
 mysql> create database om;
 mysql> show databases;
 ```
@@ -138,6 +143,12 @@ default_time_zone = '+09:00'
 
 ```sql
 sudo systemctl restart mysql
+```
+
+- time_zone 확인
+
+```bash
+show variables like '%time_zone%';
 ```
 
 - systemctl로 mysql 자동등록
