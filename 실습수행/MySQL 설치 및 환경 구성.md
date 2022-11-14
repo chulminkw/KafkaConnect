@@ -11,10 +11,6 @@ sudo apt-get update && sudo apt-get upgrade
 sudo apt-get install mysql-server mysql-client
 ```
 
-```bash
-cd /etc/mysql/mysql.conf.d
-sudo vi mysqld.cnf
-```
 
 - mysql 설치 버전 확인하고 접속 port 오픈
 
