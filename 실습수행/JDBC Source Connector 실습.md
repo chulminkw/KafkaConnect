@@ -42,7 +42,7 @@ http http://localhost:8083/connector-plugins
 ### incrementing mode용 JDBC Source Connector  생성 및 등록
 
 - connect_dev 사용자로 om 데이터베이스에 있는 customers 테이블에 데이터가 입력 될 경우 Kafka broker로 메시지를 보내는 Source Connector 생성하기
-- connector이름은 mysql_jdbc_om_source로 정하고 mode는 incrementing으로 설정.
+- connector이름은 mysql_jdbc_om_source_00로 정하고 mode는 incrementing으로 설정.
 - vi ~/connector_configs/mysql_jdbc_om_source_00.json 파일을 열어서 아래 json 파일을 입력함.
 
 ```json
