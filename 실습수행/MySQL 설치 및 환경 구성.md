@@ -79,7 +79,7 @@ mysql -u connect_dev -p
 ```sql
 use om;
 
--- 아래 Create Table 스크립트수행. customers 테이블 생성
+-- 아래 Create Table 스크립트수행.
 CREATE TABLE customers (
 customer_id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
 email_address varchar(255) NOT NULL,
@@ -90,6 +90,65 @@ system_upd timestamp NOT NULL
 # update용 system_upd 컬럼에 인덱스 생성. 
 create index idx_customers_001 on customers(system_upd);
 
-select * from customers;
+CREATE TABLE products (
+	product_id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	product_name varchar(100) NULL,
+	product_category varchar(200) NULL,
+	unit_price numeric NULL,
+  system_upd timestamp NOT NULL
+) ENGINE=InnoDB ;
 
+# update용 system_upd 컬럼에 인덱스 생성. 
+create index idx_products_001 on products(system_upd);
+
+CREATE TABLE orders (
+	order_id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	order_datetime timestamp NOT NULL,
+	customer_id int NOT NULL,
+	order_status varchar(10) NOT NULL,
+	store_id int NOT NULL,
+	system_upd timestamp NOT NULL
+) ENGINE=InnoDB ;
+
+# update용 system_upd 컬럼에 인덱스 생성. 
+create index idx_orders_001 on orders(system_upd);
+
+CREATE TABLE order_items (
+	order_id int NOT NULL,
+	line_item_id int NOT NULL,
+	product_id int NOT NULL,
+	unit_price numeric(10, 2) NOT NULL,
+	quantity int NOT NULL,
+  system_upd timestamp NOT NULL,
+	primary key (order_id, line_item_id)
+) ENGINE=InnoDB;
+
+# update용 system_upd 컬럼에 인덱스 생성. 
+create index idx_order_items_001 on order_items(system_upd);
+
+select * from customers;
+select * from products;
+select * from orders;
+select * from order_items;
+```
+
+- 한국 표준시를 mysqld 환경에 적용
+
+```sql
+cd /etc/mysql/mysql.conf.d
+sudo vi mysqld.cnf
+# 아래 설정을 mysqld.cnf에 추가
+default_time_zone = '+09:00'
+```
+
+- mysql 재기동
+
+```sql
+sudo systemctl restart mysql
+```
+
+- systemctl로 mysql 자동등록
+
+```bash
+sudo systemctl enable mysql
 ```
