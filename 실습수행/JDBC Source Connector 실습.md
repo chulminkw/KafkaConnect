@@ -8,7 +8,7 @@
 
 - MySQL JDBC Driver 로컬 PC에 Download. 오라클 사이트나 maven에서 jar download
 
-[https://mvnrepository.com/artifact/mysql/mysql-connector-java/8.0.30](https://mvnrepository.com/artifact/mysql/mysql-connector-java/8.0.30)
+[https://mvnrepository.com/artifact/mysql/mysql-connector-java/8.0.](https://mvnrepository.com/artifact/mysql/mysql-connector-java/8.0.30)29
 
 - 로컬 PC에 다운로드 받은 JDBC Connector와 MySQL JDBC Driver를 실습 vm로 옮김
 - upload된 JDBC Connector의 압축을 풀고 lib 디렉토리를 jdbc_connector로 이름 변경
@@ -29,7 +29,7 @@ cp -r jdbc_connector ~/connector_plugins
 - mysql jdbc driver를 plugin.path 디렉토리로 이동
 
 ```sql
-cd ~/mysql-connector-java-8.0.30.jar ~/connector_plugins
+cd ~/mysql-connector-java-8.0.29.jar ~/connector_plugins
 ```
 
 - Connect를 재기동하고 REST API로 해당 plugin class가 제대로 Connect에 로딩 되었는지 확인
@@ -39,11 +39,11 @@ cd ~/mysql-connector-java-8.0.30.jar ~/connector_plugins
 http http://localhost:8083/connector-plugins
 ```
 
-### JDBC Source Connector JSON 환경파일 생성 및 등록
+### incrementing mode용 JDBC Source Connector  생성 및 등록
 
 - connect_dev 사용자로 om 데이터베이스에 있는 customers 테이블에 데이터가 입력 될 경우 Kafka broker로 메시지를 보내는 Source Connector 생성하기
 - connector이름은 mysql_jdbc_om_source로 정하고 mode는 incrementing으로 설정.
-- vi ~/connector_configs/mysql_jdbc_om_source.json 파일을 열어서 아래 json 파일을 입력함.
+- vi ~/connector_configs/mysql_jdbc_om_source_00.json 파일을 열어서 아래 json 파일을 입력함.
 
 ```json
 {
@@ -56,8 +56,9 @@ http http://localhost:8083/connector-plugins
         "connection.password": "connect_dev",
         "topic.prefix": "mysql_om_",
         "topic.creation.default.replication.factor": 1,
-        "topic.creation.default.partitions": 1, 
-        "table.whitelist": "customers",
+        "topic.creation.default.partitions": 1,
+        "catalog.pattern": "om",  
+        "table.whitelist": "om.customers",
         "poll.interval.ms": 10000,
         "mode": "incrementing",
         "incrementing.column.name": "customer_id"
@@ -65,11 +66,11 @@ http http://localhost:8083/connector-plugins
 }
 ```
 
-- Connect에 REST API로 mysql_jdbc_om_source.json을 등록하여 JDBC Source Connector 신규 생성
+- Connect에 REST API로 mysql_jdbc_om_source_00.json을 등록하여 JDBC Source Connector 신규 생성
 
 ```sql
 cd ~/connector_configs
-http POST http://localhost:8083/connectors @mysql_jdbc_om_source.json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_00.json
 ```
 
 ### JDBC Source Connector 테스트 - Incrementing(Insert 테스트)
@@ -85,8 +86,10 @@ insert into customers values (1, 'testaddress_01@testdomain', 'testuser_01', now
 ```sql
 kafka-topics --bootstrap-server localhost:9092 --list
 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_customers --from-beginning
---property --print.key=true
+kafkacat -b localhost:9092 -C -t mysql_inc_om_customers -J -q -u | jq '.'
+#또는 
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_inc_om_customers --from-beginning
+--property --print.key=true | jq '.'
 ```
 
 - customers에 두번째 샘플 데이터 입력하고 consumer에서 메시지 확인.
@@ -96,9 +99,9 @@ insert into customers (email_address, full_name, system_upd)
 values ('testaddress_02@testdomain', 'testuser_02', now());
 ```
 
-### JDBC Source Connector 테스트 - timestamp+incrementing(Insert/Update)
+### timestamp mode용 JDBC Source Connector  생성 및 등록 - (Insert/Update)
 
-- vi ~/connector_configs/mysql_jdbc_om_source_upd.json를 아래로 생성
+- vi ~/connector_configs/mysql_jdbc_om_source_01.json를 아래로 생성
 
 ```json
 {
@@ -109,13 +112,13 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_om_upd_",
+        "topic.prefix": "mysql_om_time_",
         "topic.creation.default.replication.factor": 1,
         "topic.creation.default.partitions": 1, 
-        "table.whitelist": "customers",
+        "catalog.pattern": "om",
+        "table.whitelist": "om.customers, om.products, om.orders, om.order_items",
         "poll.interval.ms": 10000,
-        "mode": "timestamp+incrementing",
-        "incrementing.column.name": "customer_id",
+        "mode": "timestamp",
         "timestamp.column.name": "system_upd"
     }
 }
@@ -126,7 +129,7 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 ```sql
 cd ~/connector_configs
 http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source_00
-http POST http://localhost:8083/connectors @mysql_jdbc_om_source_upd.json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_01.json
 ```
 
 - Insert 데이터가 제대로 동작하는지 확인
@@ -134,12 +137,16 @@ http POST http://localhost:8083/connectors @mysql_jdbc_om_source_upd.json
 ```sql
 insert into customers (email_address, full_name, system_upd) 
 values ('testaddress_03@testdomain', 'testuser_03', now());
+
+insert into orders values(1, now(), 1, 'delivered', 1, now());
+insert into products values(1, 'testproduct', 'testcategory', 100, now());
+insert into order_items values(1, 1, 1, 100, 1, now());
 ```
 
 - 아래와 같이 Update 수행 후 동작 확인
 
 ```sql
-update customers set full_name='updated_name' where customer_id = 3
+update customers set full_name='updated_name' where customer_id = 3;
 ```
 
 - 아래와 같이 Update 수행 후 동작 확인
@@ -148,9 +155,9 @@ update customers set full_name='updated_name' where customer_id = 3
 update customers set full_name='updated_name', system_upd=now() where customer_id=3;
 ```
 
-### 여러개의 테이블들을 Source Connector에 설정
+### timestamp+incrementing mode용 JDBC Source Connector  생성 및 등록 - (Insert/Update)
 
-- 새로운 connector이름인 mysql_jdbc_om_source_02로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_mt.json 파일명으로 설정 저장
+- vi ~/connector_configs/mysql_jdbc_om_source_01.json를 아래로 생성
 
 ```json
 {
@@ -161,11 +168,56 @@ update customers set full_name='updated_name', system_upd=now() where customer_i
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
+        "topic.prefix": "mysql_om_timeinc_",
+        "topic.creation.default.replication.factor": 1,
+        "topic.creation.default.partitions": 1, 
+        "catalog.pattern": "om",
+        "table.whitelist": "om.customers",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp+incrementing",
+        "incrementing.column.name": "customer_id",
+        "timestamp.column.name": "system_upd"
+    }
+}
+```
+
+- 기존에 생성/등록된 mysql_jdbc_om_source_01 Connector를 삭제하고 mysql_jdbc_om_source_02로 새롭게 생성 등록
+
+```sql
+cd ~/connector_configs
+http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source_01
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_02.json
+```
+
+- Insert/updated 데이터가 제대로 동작하는지 확인
+
+```sql
+insert into customers (email_address, full_name, system_upd) 
+values ('testaddress_04@testdomain', 'testuser_04', now());
+
+update customers set full_name='new_updated_name' where customer_id = 4;
+
+update customers set full_name='new_updated_name', system_upd=now() where customer_id=4;
+```
+
+### 여러개의 테이블들을 Source Connector에 설정
+
+- 새로운 connector이름인 mysql_jdbc_om_source_bulk로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_bulk.json 파일명으로 설정 저장
+
+```json
+{
+    "name": "mysql_jdbc_om_source_bulk",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
         "topic.prefix": "mysql_om_bulk_",
         "poll.interval.ms": 10000,
         "mode": "bulk",
-        "table.blacklist": "customers",
         "catalog.pattern": "om"
+        "table.blacklist": "customers",
     }
 }
 ```
@@ -173,7 +225,7 @@ update customers set full_name='updated_name', system_upd=now() where customer_i
 - Connect에 위 설정을 등록하여 여러개의 테이블을 읽어들이는 Source Connector 생성
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_om_source_mt.json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_bulk.json
 ```
 
 - orders, products, order_items 테이블에 새로운 데이터를 입력
@@ -189,7 +241,7 @@ insert into order_items values(1, 1, 1, 100, 1, now());
 - 생성된 Topic들을 확인하고 Topic의 메시지 확인
 
 ```sql
-kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -e | grep -v '% Reached' |jq '.'
+kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -u -q | jq '.'
 ```
 
 ### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
@@ -268,7 +320,44 @@ kafkacat -b localhost:9092 -t mysql_om_mkey_order_items -C -J -e | grep -v "% Re
 
 #또는
 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_order_items --property print.key=true --from-beginning | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_order_items --from-beginning --property print.key=true | jq '.'
+```
+
+### Topic 이름 변경하기
+
+- 기존 mysql_key_테이블명으로 나오는 토픽명에 database명(catalog명)을 추가하여 토픽명 생성.
+
+ 
+
+```sql
+{
+    "name": "mysql_jdbc_om_source_03",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_key_",
+        "catalog.patten": "om",
+        "table.whitelist": "om.customers",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp+incrementing",
+        "incrementing.column.name": "customer_id",
+        "timestamp.column.name": "system_upd",
+
+        "transforms": "create_key, extract_key, rename_topic",
+        "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.create_key.fields": "customer_id",
+        "transforms.extract_key.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extract_key.field": "customer_id",
+
+        "transforms.rename_topic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+        "transforms.rename_topic.regex": "mysql_key_(.*)",
+        "transforms.rename_topic.replacement": "mysql_key_om_$1"
+
+     }
+}
 ```
 
 ### Topic 메시지 전송 시 schema 출력을 없애기
