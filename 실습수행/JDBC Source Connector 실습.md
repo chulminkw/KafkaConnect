@@ -88,7 +88,7 @@ kafka-topics --bootstrap-server localhost:9092 --list
 
 kafkacat -b localhost:9092 -C -t mysql_om_customers -J -q -u | jq '.'
 #또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_customers --from-beginning --property --print.key=true | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_customers --from-beginning --property print.key=true | jq '.'
 ```
 
 - customers에 두번째 샘플 데이터 입력하고 consumer에서 메시지 확인.
@@ -241,6 +241,17 @@ insert into order_items values(1, 1, 1, 100, 1, now());
 
 ```sql
 kafkacat -b localhost:9092 -t mysql_om_bulk_orders -C -J  -u -q | jq '.'
+```
+
+### JDBC Source Connector의 offset 관리 메커니즘
+
+- connect-offsets 토픽 메시지 확인
+
+```bash
+kafka-console-consumer --bootstrap-server localhost:9092 --topic connect-offsets --from-beginning --property print.key=true
+
+#또는
+kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q | jq '.'
 ```
 
 ### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
