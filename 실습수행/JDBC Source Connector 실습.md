@@ -257,10 +257,10 @@ kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q | jq '.'
 - mysql_om_customers 토픽의 configuration 확인
 
 ```bash
-kafka-configs --bootstrap-server localhost:9092 --entity-type topics --entity-name mysql_om_time_customers --all --describe
+kafka-configs --bootstrap-server localhost:9092 --entity-type topics --entity-name mysql_om_customers --all --describe
 ```
 
-- 기존 생성 Connector 및 토픽 삭제
+- 기존 생성 Connector 및 토픽 삭제 후 테스트
 - om 데이터베이스의 기존 테이블 백업
 
 ```bash
@@ -290,6 +290,12 @@ drop table if exists order_items;
 ```
 
 - 신규 데이터 입력 후 토픽 메시지 확인
+- auto increment 값 확인
+
+```sql
+show create table customers;
+
+```
 
 ### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
 
