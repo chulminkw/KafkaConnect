@@ -180,11 +180,11 @@ update customers set full_name='updated_name', system_upd=now() where customer_i
 }
 ```
 
-- 기존에 생성/등록된 mysql_jdbc_om_source_01 Connector를 삭제하고 mysql_jdbc_om_source_02로 새롭게 생성 등록
+- mysql_jdbc_om_source_02로 새롭게 생성 등록
 
 ```sql
 cd ~/connector_configs
-http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source_01
+
 http POST http://localhost:8083/connectors @mysql_jdbc_om_source_02.json
 ```
 
@@ -260,48 +260,84 @@ kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q | jq '.'
 kafka-configs --bootstrap-server localhost:9092 --entity-type topics --entity-name mysql_om_customers --all --describe
 ```
 
-- 기존 생성 Connector 및 토픽 삭제 후 테스트
-- om 데이터베이스의 기존 테이블 백업
+### connect-offsets 토픽을 삭제하여 모든 Source Connector의 connect offset을 Reset하기
+
+- 기존에 등록된 모든 Connector를 모두 삭제하기
+- Connect 내리기
+- Source Connector로 생성된 모든 토픽 삭제
 
 ```bash
-use om;
-
-create table customers_bkup
-as
-select * from customers;
-
-create table orders_bkup
-as
-select * from orders;
-
-create table products_bkup
-as
-select * from products;
-
-create table order_items_bkup
-as
-select * from order_items;
-
--- 필요에 따라 테이블 drop 수행
-drop table if exists customers;
-drop table if exists orders;
-drop table if exists products;
-drop table if exists order_items;
+kafka-topics --bootstrap-server localhost:9092 --list
+kafka-topics --bootstrap-server localhost:9092 --delete --topic topic명
 ```
 
-- 신규 데이터 입력 후 토픽 메시지 확인
-- auto increment 값 확인
+- connect-offsets, connect-configs, connect-status 토픽 삭제
+
+```bash
+kafka-topics --bootstrap-server localhost:9092 --delete --topic connect-offsets
+kafka-topics --bootstrap-server localhost:9092 --delete --topic connect-configs
+kafka-topics --bootstrap-server localhost:9092 --delete --topic connect-status
+```
+
+- Connect 재기동후 connect-offsets, connect-configs, connect-status가 재 생성되었는지 확인
+
+```bash
+connect_start.sh
+```
+
+- 기존 om db의 테이블들을 모두 drop하고 신규로 생성.
 
 ```sql
-show create table customers;
+use om;
 
+drop table if exists customers;
+
+drop table if exists products;
+
+drop table if exists orders;
+
+drop table if exists order_items;
+
+-- MySQL 설치 및 환경 구성에서 CREATE TABLE 수행 
+```
+
+- 기존 mysql_jdbc_om_source_00 connector 생성 재 수행.
+
+```sql
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_00.json
+```
+
+- DB에 Customer 테이블 INSERT용 데이터 재 입력
+
+```sql
+insert into customers values (1, 'testaddress_01@testdomain', 'testuser_01', now());
+insert into customers (email_address, full_name, system_upd) values ('testaddress_02@testdomain', 'testuser_02', now());
+```
+
+- 기존 mysql_jdbc_om_source_01 connector 생성 재 수행.
+
+```sql
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_01.json
+```
+
+- DB에 데이터 재 입력
+
+```sql
+insert into customers (email_address, full_name, system_upd) 
+values ('testaddress_03@testdomain', 'testuser_03', now());
+
+insert into orders values(1, now(), 1, 'delivered', 1, now());
+insert into products values(1, 'testproduct', 'testcategory', 100, now());
+insert into order_items values(1, 1, 1, 100, 1, now());
+
+update customers set full_name='updated_name', system_upd=now() where customer_id=3;
 ```
 
 ### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
 
 - JDBC Source Connector는 Topic 메시지의 Key값을 생성하기 위해서는 SMT(Single Message Transform) 설정 필요
 - ValueToKey와 ExtractField 를 이용하여 Topic 메시지의 Key값 생성
-- 새로운 connector이름인 mysql_jdbc_om_source_03로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_smt.json 파일명으로 아래 설정 저장
+- 새로운 connector이름인 mysql_jdbc_om_source_03로 아래와 같이 환경을 설정하고 connector_configs 디렉토리 밑에 mysql_jdbc_om_source_03.json 파일명으로 아래 설정 저장
 
 ```json
 {
@@ -312,7 +348,7 @@ show create table customers;
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_om_smt_",
+        "topic.prefix": "mysql_om_smt_key_",
         "table.whitelist": "customers",
         "poll.interval.ms": 10000,
         "mode": "timestamp+incrementing",
@@ -327,17 +363,17 @@ show create table customers;
 }
 ```
 
-- mysql_om_smt_customers 토픽이 생성되었음을 확인하고 해당 topic의 메시지 확인
+- mysql_om_smt_key_customers 토픽이 생성되었음을 확인하고 해당 topic의 메시지 확인
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | grep -v "% Reached" | jq '.'
+kafkacat -b localhost:9092 -t mysql_om_smt_key_customers -C -J -u -q | jq '.'
 ```
 
 ### 여러개의 컬럼으로 구성된 PK를 Key값으로 설정하기
 
 - ValueToKey에 PK가 되는 컬럼명을 fields로 적용. ExtractField는 적용하지 않아야 함.
 - 일반적으로 incrementing mode로 설정이 어려움. timestamp 모드로 설정 필요
-- 아래 설정을 mysql_jdbc_om_source_mkey.json 파일로 설정
+- 아래 설정을 mysql_jdbc_om_source_04.json 파일로 설정
 
 ```json
 {
@@ -348,7 +384,7 @@ kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | grep -v "% Reach
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_om_mkey_",
+        "topic.prefix": "mysql_om_smt_mkey_",
         "table.whitelist": "order_items",
         "poll.interval.ms": 10000,
         "mode": "timestamp",
@@ -363,17 +399,17 @@ kafkacat -b localhost:9092 -t mysql_om_smt_customers -C -J -e | grep -v "% Reach
 - 신규 Connector로 등록
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_om_source_mkey.json
+http POST http://localhost:8083/connectors @mysql_jdbc_om_source_04.json
 ```
 
 - 토픽 메시지 확인
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_om_mkey_order_items -C -J -e | grep -v "% Reached" | jq '.'
+kafkacat -b localhost:9092 -t mysql_om_smt_mkey_order_items -C -J -u -q | jq '.'
 
 #또는
 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_mkey_order_items --from-beginning --property print.key=true | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_mkey_order_items --from-beginning --property print.key=true | jq '.'
 ```
 
 ### Topic 이름 변경하기
