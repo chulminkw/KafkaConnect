@@ -254,6 +254,43 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic connect-offsets
 kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q | jq '.'
 ```
 
+- mysql_om_customers 토픽의 configuration 확인
+
+```bash
+kafka-configs --bootstrap-server localhost:9092 --entity-type topics --entity-name mysql_om_time_customers --all --describe
+```
+
+- 기존 생성 Connector 및 토픽 삭제
+- om 데이터베이스의 기존 테이블 백업
+
+```bash
+use om;
+
+create table customers_bkup
+as
+select * from customers;
+
+create table orders_bkup
+as
+select * from orders;
+
+create table products_bkup
+as
+select * from products;
+
+create table order_items_bkup
+as
+select * from order_items;
+
+-- 필요에 따라 테이블 drop 수행
+drop table if exists customers;
+drop table if exists orders;
+drop table if exists products;
+drop table if exists order_items;
+```
+
+- 신규 데이터 입력 후 토픽 메시지 확인
+
 ### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
 
 - JDBC Source Connector는 Topic 메시지의 Key값을 생성하기 위해서는 SMT(Single Message Transform) 설정 필요
