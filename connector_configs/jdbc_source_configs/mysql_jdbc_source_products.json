@@ -6,12 +6,15 @@
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_jdbc_",
-        "table.whitelist": "products",
+
+        "topic.prefix": "mysql_jdbc_source_",
+        "catalog.pattern": "om", 
+        "table.whitelist": "om.products",
         "poll.interval.ms": 10000,
         "mode": "timestamp+incrementing",
         "incrementing.column.name": "product_id",
         "timestamp.column.name": "system_upd",
+        
         "transforms": "create_key, extract_key",
         "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
         "transforms.create_key.fields": "product_id",
