@@ -15,7 +15,7 @@
 
 - 개별 테이블별로 한개의 Source Connector 설정을 담은 json 파일을 다운로드
 
-[https://github.com/chulminkw/KafkaConnect/tree/main/connector-configs/jdbc_source_configs](https://github.com/chulminkw/KafkaConnect/tree/main/connector-configs/jdbc_source_configs) 에서 다운로드 할 수 있음. 
+https://github.com/chulminkw/KafkaConnect/tree/main/connector_configs/jdbc_source_configs 에서 다운로드 할 수 있음. 
 
 또는 아래와 같이 직접 curl 명령어로 다운로드 할 수 있음. 
 
