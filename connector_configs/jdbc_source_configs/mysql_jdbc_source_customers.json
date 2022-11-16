@@ -7,7 +7,7 @@
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         
-        "topic.prefix": "mysql_jdbc_source_",
+        "topic.prefix": "mysql_jdbc_",
         "catalog.pattern": "om", 
         "table.whitelist": "om.customers",
         "poll.interval.ms": 10000,
