@@ -42,7 +42,7 @@ curl -o mysql_jdbc_source_products.json https://raw.githubusercontent.com/chulmi
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         
-        "topic.prefix": "mysql_jdbc_source_",
+        "topic.prefix": "mysql_jdbc_",
         "catalog.pattern": "om", 
         "table.whitelist": "om.customers",
         "poll.interval.ms": 10000,
@@ -71,7 +71,7 @@ curl -o mysql_jdbc_source_products.json https://raw.githubusercontent.com/chulmi
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
 
-        "topic.prefix": "mysql_jdbc_source_",
+        "topic.prefix": "mysql_jdbc_",
         "catalog.pattern": "om", 
         "table.whitelist": "om.products",
         "poll.interval.ms": 10000,
@@ -100,7 +100,7 @@ curl -o mysql_jdbc_source_products.json https://raw.githubusercontent.com/chulmi
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
 
-        "topic.prefix": "mysql_jdbc_source_",
+        "topic.prefix": "mysql_jdbc_",
         "catalog.pattern": "om", 
         "table.whitelist": "om.orders",
         "poll.interval.ms": 10000,
@@ -129,7 +129,7 @@ curl -o mysql_jdbc_source_products.json https://raw.githubusercontent.com/chulmi
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
 
-        "topic.prefix": "mysql_jdbc_source_",
+        "topic.prefix": "mysql_jdbc_",
         "catalog.pattern": "om", 
         "table.whitelist": "om.order_items",
         "poll.interval.ms": 10000,
