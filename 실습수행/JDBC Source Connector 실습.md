@@ -423,7 +423,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_mk
 
 ### Topic 이름 변경하기
 
-- 기존 mysql_key_테이블명으로 나오는 토픽명에 database명(catalog명)을 추가하여 토픽명 생성.
+- 기존 mysql_om_stm_key_테이블명으로 생성될 토픽명을 mysql_테이블명으로 토픽명 변경. 
 
 ```sql
 {
