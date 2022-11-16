@@ -123,11 +123,10 @@ values ('testaddress_02@testdomain', 'testuser_02', now());
 }
 ```
 
-- 기존에 생성/등록된 mysql_jdbc_om_source_00 Connector를 삭제하고 mysql_jdbc_om_source_01로 새롭게 생성 등록
+- mysql_jdbc_om_source_01을 새롭게 생성 등록
 
 ```sql
 cd ~/connector_configs
-http DELETE http://localhost:8083/connectors/mysql_jdbc_om_source_00
 http POST http://localhost:8083/connectors @mysql_jdbc_om_source_01.json
 ```
 
@@ -333,6 +332,15 @@ insert into order_items values(1, 1, 1, 100, 1, now());
 update customers set full_name='updated_name', system_upd=now() where customer_id=3;
 ```
 
+- Topic 메시지가 생성되었는지 확인
+
+```sql
+kafkacat -b localhost:9092 -C -t mysql_om_customers
+```
+
+- connect, kafka, zookeepr를 차례로 shutdown. kafka를 shutdown하면서 개별 topic의 snapshot 파일이 생성되었는지 확인.
+- zookeepr, kafka, connect를 차례로 재 기동하면서 topic 메시지가 정상적으로 consume되는지 확인.
+
 ### SMT를 이용하여 테이블의 PK를 Key값으로 설정하기
 
 - JDBC Source Connector는 Topic 메시지의 Key값을 생성하기 위해서는 SMT(Single Message Transform) 설정 필요
@@ -389,6 +397,7 @@ kafkacat -b localhost:9092 -t mysql_om_smt_key_customers -C -J -u -q | jq '.'
         "poll.interval.ms": 10000,
         "mode": "timestamp",
         "timestamp.column.name": "system_upd",
+
         "transforms": "create_key",
         "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
         "transforms.create_key.fields": "order_id, line_item_id"
@@ -416,18 +425,16 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_mk
 
 - 기존 mysql_key_테이블명으로 나오는 토픽명에 database명(catalog명)을 추가하여 토픽명 생성.
 
- 
-
 ```sql
 {
-    "name": "mysql_jdbc_om_source_03",
+    "name": "mysql_jdbc_om_source_05",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
         "tasks.max": "1",
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_key_",
+        "topic.prefix": "mysql_om_smt_key_",
         "catalog.patten": "om",
         "table.whitelist": "om.customers",
         "poll.interval.ms": 10000,
@@ -442,8 +449,8 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_mk
         "transforms.extract_key.field": "customer_id",
 
         "transforms.rename_topic.type": "org.apache.kafka.connect.transforms.RegexRouter",
-        "transforms.rename_topic.regex": "mysql_key_(.*)",
-        "transforms.rename_topic.replacement": "mysql_key_om_$1"
+        "transforms.rename_topic.regex": "mysql_om_smt_key_(.*)",
+        "transforms.rename_topic.replacement": "mysql_$1"
 
      }
 }
@@ -452,18 +459,18 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_mk
 ### Topic 메시지 전송 시 schema 출력을 없애기
 
 - key.converter.schemas.enable을 false로, value.converter.schemas.enable 역시 false로 설정하면 토픽 메시지로 schema 값이 출력되지 않음.
-- 아래 설정을 mysql_jdbc_om_source_noschema.json 파일로 저장.
+- 아래 설정을 mysql_jdbc_om_source_06.json 파일로 저장.
 
 ```json
 {
-    "name": "mysql_jdbc_om_source_05",
+    "name": "mysql_jdbc_om_source_06",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
         "tasks.max": "1",
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_om_smt_noschema_",
+        "topic.prefix": "mysql_om_noschema_",
         "table.whitelist": "customers",
         "poll.interval.ms": 10000,
         "mode": "timestamp+incrementing",
@@ -487,15 +494,15 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_mk
 - 신규 Connector로 등록
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_om_source_noschema.json
+http POST http://localhost:8083/connectors @mysql_om_noschema.json
 ```
 
 - 토픽 메시지 확인
 
 ```sql
-kafkacat -b localhost:9092 -t mysql_om_smt_noschema_customers -C -J -e | grep -v "% Reached" | jq '.'
+kafkacat -b localhost:9092 -t mysql_om_noschema_customers -C -J -u -q | jq '.'
 
 #또는
 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_smt_noschema_customers --property print.key=true --from-beginning | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql_om_noschema_customers --property print.key=true --from-beginning | jq '.'
 ```
