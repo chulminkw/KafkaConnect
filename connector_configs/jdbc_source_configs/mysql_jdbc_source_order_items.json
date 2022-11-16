@@ -6,11 +6,14 @@
         "connection.url": "jdbc:mysql://localhost:3306/om",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "topic.prefix": "mysql_jdbc_",
-        "table.whitelist": "order_items",
+
+        "topic.prefix": "mysql_jdbc_source_",
+        "catalog.pattern": "om", 
+        "table.whitelist": "om.order_items",
         "poll.interval.ms": 10000,
         "mode": "timestamp",
         "timestamp.column.name": "system_upd",
+
         "transforms": "create_key",
         "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
         "transforms.create_key.fields": "order_id, line_item_id"
