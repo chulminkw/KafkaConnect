@@ -106,7 +106,7 @@ http GET http://localhost:8083/connector-plugins | jq '.[].class'
         "pk.fields": "customer_id",
         "delete.enabled": "true",
         
-        "table.name.format": "customers_sink_base",
+        "table.name.format": "om_sink.customers_sink_base",
         
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
