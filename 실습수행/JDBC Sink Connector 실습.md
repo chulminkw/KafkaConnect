@@ -323,7 +323,7 @@ use om;
 
 update products set product_category='updated_category', system_upd=now() where product_id = 2;
 
-update orders set order_status='updated_status', system_upd=now() where order_id = 2;
+update orders set order_status='updated', system_upd=now() where order_id = 2;
 
 update order_items set quantity=2, system_upd=now() where order_id = 2;
 ```
