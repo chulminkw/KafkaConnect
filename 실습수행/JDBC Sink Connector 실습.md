@@ -35,7 +35,7 @@ CREATE TABLE products_sink (
 	product_id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
 	product_name varchar(100) NULL,
 	product_category varchar(200) NULL,
-	unit_price numeric NULL,
+	unit_price decimal(10, 0) NULL,
   system_upd timestamp NOT NULL
 ) ENGINE=InnoDB ;
 
@@ -58,7 +58,7 @@ CREATE TABLE order_items_sink (
 	order_id int NOT NULL,
 	line_item_id int NOT NULL,
 	product_id int NOT NULL,
-	unit_price numeric(10, 2) NOT NULL,
+	unit_price decimal(10, 2) NOT NULL,
 	quantity int NOT NULL,
   system_upd timestamp NOT NULL,
 	primary key (order_id, line_item_id)
@@ -79,6 +79,10 @@ select * from order_items_sink;
 http GET http://localhost:8083/connector-plugins | jq '.[].class'
 ```
 
+### REST API 및 토픽 메시지 읽기 관련 유틸리티 쉘 스크립트 생성
+
+- [https://github.com/chulminkw/KafkaConnect/tree/main/scripts](https://github.com/chulminkw/KafkaConnect/tree/main/scripts) 에 있는 show_connectors, register_connector, delete_connector, show_topic_messages 쉘 스크립트를 /home/min 디렉토리로 복사
+
 ### JDBC Sink Connector 생성하여 Key값을 가지는 Customers 토픽에서 테이블로 데이터 Sink
 
  
@@ -96,11 +100,14 @@ http GET http://localhost:8083/connector-plugins | jq '.[].class'
         "connection.url": "jdbc:mysql://localhost:3306/om_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
+
         "insert.mode": "upsert",
         "pk.mode": "record_key",
         "pk.fields": "customer_id",
         "delete.enabled": "true",
+        
         "table.name.format": "customers_sink_base",
+        
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
         "auto.create": "true"
@@ -111,21 +118,23 @@ http GET http://localhost:8083/connector-plugins | jq '.[].class'
 - 새로운 sink connector 생성
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_sink_00.json 
+register_connector mysql_jdbc_sink_00.json 
 ```
 
 - om_sink db에서 customers_sink_base 테이블의 데이터 입력 확인
 - mysql_jdbc_customers 토픽의 메시지 확인
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Reached' | jq '.'
+kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -u -q | jq '.'
+#또는
+show_topic_messages mysql_jdbc_customers
 ```
 
 - auto.create로 테이블을 자동 생성하는 것은 바람직하지 않음. 테이블 관리를 위해서라도 DB에서 테이블을 먼저 생성한 뒤에 토픽에서 DB 테이블로 Sink 권장
 - 기존 mysql_jdbc_sink_customers_00 Connector 삭제
 
 ```sql
-http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_customers_00
+delete_connector mysql_jdbc_sink_customers_00
 ```
 
 - 아래 설정을 mysql_jdbc_sink_customers.json으로 만들고 Connect에 신규 Connector로 생성.
@@ -140,15 +149,24 @@ http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_customers_00
         "connection.url": "jdbc:mysql://localhost:3306/om_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
+        
         "insert.mode": "upsert",
         "pk.mode": "record_key",
         "pk.fields": "customer_id",
         "delete.enabled": "true",
-        "table.name.format": "customers_sink",
+
+        "table.name.format": "om_sink.customers_sink",
+        
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
 }
+```
+
+- sink connector 등록
+
+```sql
+register_connector mysql_jdbc_sink_customers.json 
 ```
 
 - 신규 Connector 생성 후 om_sink DB의 customers_sink 테이블에서 데이터 입력 확인
@@ -182,7 +200,7 @@ http DELETE http://localhost:8083/connectors/mysql_jdbc_sink_customers_00
 - order_items_sink 테이블용 신규 Sink Connector 생성
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
+register_connector mysql_jdbc_sink_order_items.json
 ```
 
 ### Source 테이블과 연계하여 Sink 테이블에 데이터 연동 테스트
@@ -204,7 +222,7 @@ http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
         "pk.mode": "record_key",
         "pk.fields": "product_id",
         "delete.enabled": "true",
-        "table.name.format": "products_sink",
+        "table.name.format": "om_sink.products_sink",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
@@ -227,11 +245,19 @@ http POST http://localhost:8083/connectors @mysql_jdbc_sink_order_items.json
         "pk.mode": "record_key",
         "pk.fields": "order_id",
         "delete.enabled": "true",
-        "table.name.format": "orders_sink",
+        "table.name.format": "om_sink.orders_sink",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
 }
+```
+
+- orders와 products 관련 sink connector 생성 등록
+
+```sql
+register_connector mysql_jdbc_sink_products.json
+register_connector mysql_jdbc_sink_orders.json
+
 ```
 
 - om 데이터베이스의 테이블들에 데이터 insert 후 om_sink 데이터베이스의 테이블들에 동기화 입력 되는지 확인
@@ -287,7 +313,7 @@ select * from customers_sink;
 - mysql_jdbc_source_customers 토픽의 메시지 내용 확인
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e | grep -v '% Reached' | jq '.'
+show_topic_messages json mysql_jdbc_customers
 ```
 
 - 다른 테이블도 Update 테스트 수행후 Sink DB에서 성공적으로 Update 되었는지 확인
@@ -300,7 +326,6 @@ update products set product_category='updated_category', system_upd=now() where 
 update orders set order_status='updated_status', system_upd=now() where order_id = 2;
 
 update order_items set quantity=2, system_upd=now() where order_id = 2;
-
 ```
 
 ### 레코드 삭제 테스트
@@ -310,7 +335,7 @@ update order_items set quantity=2, system_upd=now() where order_id = 2;
 - mysql_jdbc_customers토픽에서 customer_id=3인 데이터의 Key값을 찾아서 해당 Key값으로 Value를 Null로 설정.
 
 ```bash
-kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -e |  grep -v '% Reached' | jq '.'
+kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -u -q | jq '.'
 echo '{"schema":{"type":"int32","optional":false},"payload":3}#' | kafkacat -b localhost:9092 -P -t mysql_jdbc_customers -Z -K#
 ```
 
