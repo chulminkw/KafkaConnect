@@ -190,7 +190,7 @@ register_connector mysql_jdbc_sink_customers.json
         "pk.mode": "record_key",
         "pk.fields": "order_id, line_item_id",
         "delete.enabled": "true",
-        "table.name.format": "order_items_sink",
+        "table.name.format": "om_sink.order_items_sink",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
