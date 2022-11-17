@@ -1,0 +1,1 @@
+/usr/bin/http POST http://localhost:8083/connectors @/home/min/connector_configs/$1

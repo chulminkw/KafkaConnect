@@ -1,0 +1,8 @@
+if [ $1 == 'avro' ]
+then 
+	kafka-avro-console-consumer --bootstrap-server localhost:9092 --topic $2 --from-beginning --property print.key=true |jq '.'
+
+else 
+	kafka-console-consumer --bootstrap-server localhost:9092 --topic $2 --from-beginning --property print.key=true |jq '.'
+
+fi
