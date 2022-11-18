@@ -223,7 +223,7 @@ CREATE TABLE products_sink (
 	product_id int NOT NULL PRIMARY KEY,
 	product_name varchar(100) NULL,
 	product_category varchar(200) NULL,
-	unit_price decimal(10,0) NULL
+	unit_price decimal(10, 0) NULL
 ) ENGINE=InnoDB ;
 
 CREATE TABLE orders_sink (
@@ -249,7 +249,7 @@ select * from orders_sink;
 select * from order_items_sink;
 ```
 
-- mysql_jdbc_oc_sink_customers_test01.json 파일로 아래 설정을 저장.
+- mysql_cdc_oc_sink_test01.json 파일로 아래 설정을 저장.
 
 ```json
 {
@@ -275,10 +275,10 @@ select * from order_items_sink;
 - 새로운 Connector로 생성 등록
 
 ```sql
-register_connector mysql_jdbc_oc_sink_customers_test01.json
+register_connector mysql_cdc_oc_sink_test01.json.json
 ```
 
-- connect console에서 로그 메시지를 확인하면 Sink Connector가 수행되지 않고 오류가 발생함을 확인
+- **connect console에서 로그 메시지를 확인하면 Sink Connector가 수행되지 않고 오류가 발생함을 확인**
 
 ### Source에서 ExtractNewRecordState SMT 적용하여 After 메시지만 생성.
 
@@ -354,6 +354,60 @@ register_connector mysql_jdbc_oc_sink_customers_01.json
 ```
 
 - 소스 테이블의 데이터가 제대로 Sink 되는지 oc_sink 내의 테이블 확인
+
+### Sink Connector 에서 ExtractNewRecordState SMT 적용하여 After 메시지만 변환한 뒤 DB 입력
+
+- Source Connector는 Before/After를 그대로 유지하고 Sink Connector에서 ExtractNewRecordState SMT 적용하여 DB 입력 수행
+- 아래 설정을 mysql_jdbc_oc_sink_customers_smt_after_01.json 파일에 저장.
+
+```sql
+{
+    "name": "mysql_jdbc_oc_sink_customers_smt_after_01",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "test01.oc.customers",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "customers_sink_smt_after",
+        "insert.mode": "upsert",
+        "pk.fields": "customer_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter", 
+        
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+
+    }
+}
+```
+
+- oc_sink DB에 별도의 테스트용 테이블을 생성.
+
+```sql
+use oc_sink;
+
+drop table if exists customers_sink_smt_after;
+
+-- 아래 Create Table 스크립트수행.
+CREATE TABLE customers_sink_smt_after (
+customer_id int NOT NULL PRIMARY KEY,
+email_address varchar(255) NOT NULL,
+full_name varchar(255) NOT NULL
+) ENGINE=InnoDB ;
+```
+
+- 해당 설정을 Connect로 등록하여 신규 connector 생성.
+
+```sql
+register_connector mysql_jdbc_oc_sink_customers_smt_after_01.json
+```
+
+- oc_sink의 customers_sink_smt_after 테이블에 데이터가 입력되었는지 확인.
 
 ### connect-offsets 및 __consumer_offsets 메시지 확인
 
