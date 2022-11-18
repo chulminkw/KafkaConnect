@@ -152,20 +152,14 @@ show variables like '%expire_logs%';
         "database.include.list": "oc",
         "database.allowPublicKeyRetrieval": "true",
         "database.history.kafka.bootstrap.servers": "192.168.56.101:9092",
-        "database.history.kafka.topic": "test01-schema-changes.mysql.oc",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
 }
 ```
 
-- 해당 설정을 Connect로 등록하여 신규 connector 생성.
-
-```sql
-http POST http://localhost:8083/connectors @mysql_cdc_oc_source_test01.json
-```
-
-- 데이터를 customers 테이블에 입력한 뒤 토픽과 메시지 생성 확인
+- 신규 데이터를 customers 테이블에 입력
 
 ```sql
 use oc;
@@ -181,12 +175,29 @@ update customers set full_name='updateduser_01' where customer_id = 2;
 delete from customers where customer_id = 2;
 ```
 
+- 해당 설정을 Connect로 등록하여 신규 connector 생성.
+
+```sql
+register_connector ysql_cdc_oc_source_test01.json
+```
+
 - 토픽 메시지 확인
 
 ```sql
-kafkacat -b localhost:9092 -t test01.oc.customers -C -J -e|jq '.'
+kafkacat -b localhost:9092 -t test01.oc.customers -C -J -u -q | jq '.'
 # 또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic test01.oc.customers --from-beginning --property print.key=true| jq '.'
+show_topic_messages json test01.oc.customers
+```
+
+- 데이터를 추가로 입력하고 토픽 메시지 확인
+
+```sql
+use oc;
+
+insert into customers values (3, 'testaddress_01@testdomain', 'testuser_01');
+insert into customers values (4, 'testaddress_02@testdomain', 'testuser_02');
+
+delete from customers where customer_id = 2;
 ```
 
 ### JDBC Sink Connector로 데이터 동기화 실습 - Source에서 ExtractNewRecordState SMT 적용 없는 메시지
@@ -246,11 +257,11 @@ select * from orders_sink;
 select * from order_items_sink;
 ```
 
-- mysql_jdbc_oc_sink_customers_00.json 파일로 아래 설정을 저장.
+- mysql_jdbc_oc_sink_customers_test01.json 파일로 아래 설정을 저장.
 
 ```json
 {
-    "name": "mysql_jdbc_oc_sink_customers_00",
+    "name": "mysql_jdbc_oc_sink_customers_test01",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
@@ -258,7 +269,7 @@ select * from order_items_sink;
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "customers_sink",
+        "table.name.format": "oc_sink.customers_sink",
         "insert.mode": "upsert",
         "pk.fields": "customer_id",
         "pk.mode": "record_key",
@@ -272,7 +283,7 @@ select * from order_items_sink;
 - 새로운 Connector로 생성 등록
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
+register_connector mysql_jdbc_oc_sink_customers_test01.json
 ```
 
 - connect console에서 로그 메시지를 확인하면 Sink Connector가 수행되지 않고 오류가 발생함을 확인
@@ -298,7 +309,7 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
         "database.user": "connect_dev",
         "database.password": "connect_dev",
         "database.server.id": "10001",
-        "database.server.name": "mysql-01",
+        "database.server.name": "mysql01",
         "database.include.list": "oc",
         "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items", 
         "database.history.kafka.bootstrap.servers": "localhost:9092",
@@ -316,7 +327,7 @@ http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
 - 해당 설정을 Connect로 등록하여 신규 connector 생성.
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_cdc_oc_source_01.json
+register_connector mysql_cdc_oc_source_01.json
 ```
 
 - 토픽 메시지 확인
@@ -324,7 +335,7 @@ http POST http://localhost:8083/connectors @mysql_cdc_oc_source_01.json
 ```sql
 kafkacat -b localhost:9092 -t mysql01.oc.customers -C -J -e|jq '.'
 # 또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql-01.oc.customers --from-beginning --property print.key=true| jq '.'
+show_topic_messages json mysql01.oc.customers
 ```
 
 - JDBC Sink Connector 신규 생성. 아래 설정을 mysql_jdbc_oc_sink_customers_01.json 파일에 저장
@@ -335,7 +346,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql-01.oc.cus
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "mysql-01.oc.customers",
+        "topics": "mysql01.oc.customers",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
@@ -353,7 +364,7 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql-01.oc.cus
 - 해당 설정을 Connect로 등록하여 신규 connector 생성.
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_01.json
+register_connector mysql_jdbc_oc_sink_customers_01.json
 ```
 
 - 소스 테이블의 데이터가 제대로 Sink 되는지 oc_sink 내의 테이블 확인
@@ -385,7 +396,7 @@ kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --boots
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "mysql-01.oc.products",
+        "topics": "mysql01.oc.products",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
@@ -408,7 +419,7 @@ kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --boots
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "mysql-01.oc.orders",
+        "topics": "mysql01.oc.orders",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
@@ -431,7 +442,7 @@ kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --boots
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "mysql-01.oc.order_items",
+        "topics": "mysql01.oc.order_items",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
