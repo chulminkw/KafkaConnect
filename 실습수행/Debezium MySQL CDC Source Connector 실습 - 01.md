@@ -175,12 +175,6 @@ update customers set full_name='updateduser_01' where customer_id = 2;
 delete from customers where customer_id = 2;
 ```
 
-- 해당 설정을 Connect로 등록하여 신규 connector 생성.
-
-```sql
-register_connector ysql_cdc_oc_source_test01.json
-```
-
 - 토픽 메시지 확인
 
 ```sql
@@ -196,8 +190,6 @@ use oc;
 
 insert into customers values (3, 'testaddress_01@testdomain', 'testuser_01');
 insert into customers values (4, 'testaddress_02@testdomain', 'testuser_02');
-
-delete from customers where customer_id = 2;
 ```
 
 ### JDBC Sink Connector로 데이터 동기화 실습 - Source에서 ExtractNewRecordState SMT 적용 없는 메시지
@@ -288,12 +280,6 @@ register_connector mysql_jdbc_oc_sink_customers_test01.json
 
 - connect console에서 로그 메시지를 확인하면 Sink Connector가 수행되지 않고 오류가 발생함을 확인
 
-### Update와 Delete 시에 메시지 확인
-
-- 소스 테이블에 update와 Delete 수행 후에 메시지 확인
-
-### 
-
 ### Source에서 ExtractNewRecordState SMT 적용하여 After 메시지만 생성.
 
 - ExtractNewRecordStateSMT를 적용하여 환경설정. 아래 내용을 mysql_cdc_oc_source_01.json 파일에 저장
@@ -313,7 +299,7 @@ register_connector mysql_jdbc_oc_sink_customers_test01.json
         "database.include.list": "oc",
         "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items", 
         "database.history.kafka.bootstrap.servers": "localhost:9092",
-        "database.history.kafka.topic": "schema-changes.mysql-01.oc",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
 
@@ -333,7 +319,7 @@ register_connector mysql_cdc_oc_source_01.json
 - 토픽 메시지 확인
 
 ```sql
-kafkacat -b localhost:9092 -t mysql01.oc.customers -C -J -e|jq '.'
+kafkacat -b localhost:9092 -t mysql01.oc.customers -C -J -u -q | jq '.'
 # 또는 
 show_topic_messages json mysql01.oc.customers
 ```
