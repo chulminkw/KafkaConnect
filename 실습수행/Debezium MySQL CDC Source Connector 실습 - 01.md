@@ -74,7 +74,7 @@ CREATE TABLE products (
 	product_id int NOT NULL PRIMARY KEY,
 	product_name varchar(100) NULL,
 	product_category varchar(200) NULL,
-	unit_price numeric NULL
+	unit_price decimal(10,0) NULL
 ) ENGINE=InnoDB ;
 
 CREATE TABLE orders (
@@ -89,7 +89,7 @@ CREATE TABLE order_items (
 	order_id int NOT NULL,
 	line_item_id int NOT NULL,
 	product_id int NOT NULL,
-	unit_price numeric(10, 2) NOT NULL,
+	unit_price decimal(10, 2) NOT NULL,
 	quantity int NOT NULL,
 	primary key (order_id, line_item_id)
 ) ENGINE=InnoDB;
