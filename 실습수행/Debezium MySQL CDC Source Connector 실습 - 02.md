@@ -67,7 +67,7 @@ register_connector mysql_jdbc_oc_sink_order_items_01.json
 
 - 생성 후 sink 테이블에 제대로 데이터가 입력되었는지 확인.
 
-### date, datetime, timestamp 관련 데이터 변환
+### date, datetime, timestamp 관련 Debezium 데이터 변환 및 JDBC Sink 테스트
 
 - date와 datetime 컬럼 타입을 테스트해보기 위해 orders_datetime_tab 테이블을 oc DB에 생성
 
