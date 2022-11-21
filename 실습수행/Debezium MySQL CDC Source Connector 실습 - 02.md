@@ -67,7 +67,7 @@ register_connector mysql_jdbc_oc_sink_order_items_01.json
 
 - 생성 후 sink 테이블에 제대로 데이터가 입력되었는지 확인.
 
-### date, datetime, timestamp 관련 Debezium 데이터 변환 및 JDBC Sink 테스트
+### date, datetime 관련 Debezium 데이터 변환 및 JDBC Sink 테스트
 
 - date와 datetime 컬럼 타입을 테스트해보기 위해 orders_datetime_tab 테이블을 oc DB에 생성
 
@@ -82,6 +82,9 @@ CREATE TABLE orders_datetime_tab (
 	order_status varchar(10) NOT NULL,
 	store_id int NOT NULL
 ) ENGINE=InnoDB ;
+
+insert into orders_datetime_tab values (1, now(), now(), 1, 'delivered', 1);
+
 ```
 
 - oc_sink db에 orders_datetime_tab_sink 테이블 생성
@@ -154,7 +157,7 @@ show_topic_messages json test01.oc.orders_datetime_tab
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "orders_datetime_tab_sink",
+        "table.name.format": "oc.orders_datetime_tab_sink",
         "insert.mode": "upsert",
         "pk.fields": "order_id",
         "pk.mode": "record_key",
@@ -227,7 +230,7 @@ register_connector mysql_cdc_oc_source_datetime_tab_test02.json
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "orders_datetime_tab_sink",
+        "table.name.format": "oc.orders_datetime_tab_sink",
         "insert.mode": "upsert",
         "pk.fields": "order_id",
         "pk.mode": "record_key",
