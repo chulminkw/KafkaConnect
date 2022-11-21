@@ -372,9 +372,9 @@ use om;
 drop table if exists datetime_tab;
 
 CREATE TABLE datetime_tab (
-	id int NOT NULL PRIMARY KEY,
-	order_date date NOT NULL,
-	order_datetime datetime NOT NULL,
+  id int NOT NULL PRIMARY KEY,
+  order_date date NOT NULL,
+  order_datetime datetime NOT NULL,
   order_timestamp timestamp NOT NULL,
   system_upd timestamp NOT NULL
 ) ENGINE=InnoDB ;
@@ -390,9 +390,9 @@ use om_sink;
 drop table if exists datetime_tab_sink;
 
 CREATE TABLE datetime_tab_sink (
-	id int NOT NULL PRIMARY KEY,
-	order_date date NOT NULL,
-	order_datetime datetime NOT NULL,
+  id int NOT NULL PRIMARY KEY,
+  order_date date NOT NULL,
+  order_datetime datetime NOT NULL,
   order_timestamp timestamp NOT NULL,
   system_upd timestamp NOT NULL
 ) ENGINE=InnoDB ;
