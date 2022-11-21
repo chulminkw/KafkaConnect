@@ -219,7 +219,7 @@ register_connector mysql_jdbc_sink_order_items.json
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         "insert.mode": "upsert",
-        "pk.mode": "record_key",
+        "pk.mode": "record_key"
         "pk.fields": "product_id",
         "delete.enabled": "true",
         "table.name.format": "om_sink.products_sink",
@@ -332,6 +332,16 @@ update order_items set quantity=2, system_upd=now() where order_id = 2;
 
 - Topic 메시지의 Key값에 해당하는 Value가 Null이면 Sink Connector는 Key값에 해당하는 PK가 가리키는 레코드를 삭제함.
 - JDBC Source Connector는 Delete 메시지를 보낼 수 없으므로 kafkacat으로 Delete 메시지를 시뮬레이션 하기 위해 특정 key값을 가지는 메시지의 value를 Null로 만듬.
+- 기존 mysql_jdbc_source_customers Connector와 mysql_jdbc_sink_customers Connector를 정지
+
+```sql
+http PUT http://localhost:8083/connectors/mysql_jdbc_source_customers/pause
+http PUT http://localhost:8083/connectors/mysql_jdbc_sink_customers/pause
+
+http GET http://localhost:8083/connectors/mysql_jdbc_source_customers/status
+http GET http://localhost:8083/connectors/mysql_jdbc_sink_customers/status
+```
+
 - mysql_jdbc_customers토픽에서 customer_id=3인 데이터의 Key값을 찾아서 해당 Key값으로 Value를 Null로 설정.
 
 ```bash
@@ -339,11 +349,119 @@ kafkacat -b localhost:9092 -t mysql_jdbc_customers -C -J -u -q | jq '.'
 echo '{"schema":{"type":"int32","optional":false},"payload":3}#' | kafkacat -b localhost:9092 -P -t mysql_jdbc_customers -Z -K#
 ```
 
-- mysql_jdbc_sink_customers Connector가 기동되어 있는지 확인
+- mysql_jdbc_source_customers Connector와 mysql_jdbc_sink_customers Connector를 재기동
 
 ```sql
-http GET http://localhost:8083/connectors
+http PUT http://localhost:8083/connectors/mysql_jdbc_source_customers/resume
+http PUT http://localhost:8083/connectors/mysql_jdbc_sink_customers/resume
+
+http GET http://localhost:8083/connectors/mysql_jdbc_source_customers/status
+http GET http://localhost:8083/connectors/mysql_jdbc_sink_customers/status
 ```
 
 - mysql에 접속하여 om_sink 의 customers_sink 테이블의 customer_id=3이 삭제되었는지 확인
-- om DB의 customers 테이블의 customer_id=3을 강제 삭제
+- 데이터 동기화를 위해 om DB의 customers 테이블의 customer_id=3을 강제 삭제
+
+### JDBC Source Connector의 date, datetime, timestamp 관련 데이터 변환 및 Sink Connector 입력
+
+- date와 datetime 컬럼 타입을 테스트해보기 위해 orders_datetime_tab 테이블을 oc DB에 생성
+
+```sql
+use om;
+
+drop table if exists datetime_tab;
+
+CREATE TABLE datetime_tab (
+	id int NOT NULL PRIMARY KEY,
+	order_date date NOT NULL,
+	order_datetime datetime NOT NULL,
+  order_timestamp timestamp NOT NULL,
+  system_upd timestamp NOT NULL
+) ENGINE=InnoDB ;
+
+insert into datetime_tab values (1, now(), now(), now(), now());
+```
+
+- oc_sink db에 orders_datetime_tab_sink 테이블 생성
+
+```sql
+use om_sink;
+
+drop table if exists datetime_tab_sink;
+
+CREATE TABLE datetime_tab_sink (
+	id int NOT NULL PRIMARY KEY,
+	order_date date NOT NULL,
+	order_datetime datetime NOT NULL,
+  order_timestamp timestamp NOT NULL,
+  system_upd timestamp NOT NULL
+) ENGINE=InnoDB ;
+```
+
+- datetime_tab 테이블을 위한 source connector 설정을 mysql_jdbc_source_datetime_tab.json 파일에 저장.
+
+```json
+{
+    "name": "mysql_jdbc_om_source_datetime_tab",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "tasks.max": "1",
+        "connection.url": "jdbc:mysql://localhost:3306/om",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "topic.prefix": "mysql_jdbc_",
+        "table.whitelist": "om.datetime_tab",
+        "poll.interval.ms": 10000,
+        "mode": "timestamp",
+        "timestamp.column.name": "system_upd",
+        "transforms": "create_key, extract_key",
+        "transforms.create_key.type": "org.apache.kafka.connect.transforms.ValueToKey",
+        "transforms.create_key.fields": "id",
+        "transforms.extract_key.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extract_key.field": "id"
+    }
+}
+```
+
+- source connector 생성 등록
+
+```json
+register_connector mysql_jdbc_source_datetime_tab.json
+```
+
+- 토픽 메시지 확인
+
+```json
+show_topic_messages json mysql_jdbc_datetime_tab
+```
+
+- mysql_jdbc_sink_datetime_tab.json에 sink connector 생성
+
+```json
+{
+    "name": "mysql_jdbc_sink_datetime_tab",
+    "config": {
+        "connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql_jdbc_datetime_tab",
+        "connection.url": "jdbc:mysql://localhost:3306/om_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "insert.mode": "upsert",
+        "pk.mode": "record_key",
+        "pk.fields": "id",
+        "delete.enabled": "true",
+        "table.name.format": "om_sink.datetime_tab_sink",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- sink connector 등록
+
+```json
+register_connector mysql_jdbc_sink_datetime_tab.json
+```
+
+- om_sink.datetime_tab_sink 테이블에 데이터가 연동되는지 확인
