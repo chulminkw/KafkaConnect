@@ -425,13 +425,13 @@ CREATE TABLE datetime_tab_sink (
 
 - source connector 생성 등록
 
-```json
+```shell
 register_connector mysql_jdbc_source_datetime_tab.json
 ```
 
 - 토픽 메시지 확인
 
-```json
+```shell
 show_topic_messages json mysql_jdbc_datetime_tab
 ```
 
@@ -460,7 +460,7 @@ show_topic_messages json mysql_jdbc_datetime_tab
 
 - sink connector 등록
 
-```json
+```shell
 register_connector mysql_jdbc_sink_datetime_tab.json
 ```
 
