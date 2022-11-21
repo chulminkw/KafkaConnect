@@ -1,364 +1,6 @@
-# Debezium MySQL CDC Source Connector 실습 - 01
+# Debezium MySQL CDC Source Connector 실습 - 02
 
-### Debezium MySQL Connector Plugin을 Connect에 설치하기
-
-- Debezium 사이트에서 Debezium mysql source connecto 1.9.7 버전 Download를 검색하여 다운로드로 local PC에 저장.
-
-[Debezium Release Series 1.9](https://debezium.io/releases/1.9/)
-
-- 압축 파일을 실습 VM에 올리고 압축 해제
-- plug.path 디렉토리 밑에 cdc_source_connector로 서브 디렉토리 생성하고 압축 해제한 jar 파일을 해당 디렉토리로 복사
-
-```bash
-tar -xvf debezium-connector-mysql-1.9.7.Final-plugin.tar.gz
-cd ~/connector_plugins
-mkdir cdc_source_connector
-cd ~/debezium-connector-mysql
-cp *.jar ../connector_plugins/cdc_source_connector 
-```
-
-- Connect를 재 기동하고 아래 명령어로 debezium connector plugin이 로딩되었는지 확인
-
-```bash
-http GET http://localhost:8083/connector-plugins | jq '.[].class'
-```
-
-### CDC Source Connector 수행을 위한 DB Replication 권한 생성 및 테스트 DB 생성
-
-- mysql -u root -p 로 root 사용자로 mysql 접속 후 oc 데이터베이스 생성하고 connect_dev 사용자에게 접근 권한 부여
-
-```sql
-
-create database oc;
-show databases;
-# 데이터베이스 사용권한 부여
-grant all privileges on oc.* to 'connect_dev'@'%' with grant option;
-
-flush privileges;
-```
-
-- 반드시 connect_dev 사용자에게 아래 권한을 부여해야 함.
-
-```sql
---grant SUPER, REPLICATION CLIENT, REPLICATION SLAVE, RELOAD on *.* to 'connect_dev'@'%' with grant option;
-
-grant SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'connect_dev'@'%' with grant option;
-
-flush privileges;
-```
-
-- 또는 아래와 같이 모든 권한을 connect_dev 사용자에게 부여
-
-```sql
-grant all privileges on *.* to 'connect_dev'@'%' with grant option;
-```
-
-- mysql -u connect_dev -p 로 connect_dev 사용자로 접속 후 아래 DDL로 테스트용 테이블을 생성.
-
-```sql
-use oc;
-
-drop table if exists customers;
-drop table if exists products;
-drop table if exists orders;
-drop table if exists order_items;
-
--- 아래 Create Table 스크립트수행.
-CREATE TABLE customers (
-customer_id int NOT NULL PRIMARY KEY,
-email_address varchar(255) NOT NULL,
-full_name varchar(255) NOT NULL
-) ENGINE=InnoDB ;
-
-CREATE TABLE products (
-	product_id int NOT NULL PRIMARY KEY,
-	product_name varchar(100) NULL,
-	product_category varchar(200) NULL,
-	unit_price numeric NULL
-) ENGINE=InnoDB ;
-
-CREATE TABLE orders (
-	order_id int NOT NULL PRIMARY KEY,
-	order_datetime timestamp NOT NULL,
-	customer_id int NOT NULL,
-	order_status varchar(10) NOT NULL,
-	store_id int NOT NULL
-) ENGINE=InnoDB ;
-
-CREATE TABLE order_items (
-	order_id int NOT NULL,
-	line_item_id int NOT NULL,
-	product_id int NOT NULL,
-	unit_price numeric(10, 2) NOT NULL,
-	quantity int NOT NULL,
-	primary key (order_id, line_item_id)
-) ENGINE=InnoDB;
-
-select * from customers;
-select * from products;
-select * from orders;
-select * from order_items;
-```
-
-### MySQL의 복제 환경 확인
-
-- root로 로그인하여 현재 복제하는 binlog 정보 확인
-
-```sql
-show master status;
-
-SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
-FROM performance_schema.global_variables WHERE variable_name='log_bin';
-
-show variables like '%log_bin%';
-```
-
-- 만약 binlog 복제 설정이 되어 있지 않으면 /etc/mysql/mysql.conf.d/mysqld.cnf 파일에 아래 설정을 추가하고 mysql 재 기동
-
-```sql
-server-id         = 223344
-log_bin           = binlog
-binlog_format     = ROW
-binlog_row_image  = FULL
-expire_logs_days  = 0
-```
-
-- binlog 관련 정보 확인
-
-```sql
-show variables like "%binlog_%";
-show variables like '%expire_logs%';
-```
-
-- binlog가 쌓이는 디렉토리 확인. os에서 root 사용자로 로그인 한뒤 /var/lib/mysql 디렉토리에서 binlog 확인
-
-### CDC Source Connector 생성해보기 - ExtractNewRecordState SMT 적용 없이 생성
-
-- oc 데이터베이스의 모든 테이블들에 대한 변경 데이터를 가져오는 Source Connector 생성
-- MySQL 기동을 확인 후에 아래와 같은 설정을 mysql_cdc_oc_source_test01.json에 저장
-
-```json
-{
-    "name": "mysql_cdc_oc_source_test01",
-    "config": {
-        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
-        "tasks.max": "1",
-        "database.hostname": "192.168.56.101",
-        "database.port": "3306",
-        "database.user": "connect_dev",
-        "database.password": "connect_dev",
-        "database.server.id": "10000",
-        "database.server.name": "test01",
-        "database.include.list": "oc",
-        "database.allowPublicKeyRetrieval": "true",
-        "database.history.kafka.bootstrap.servers": "192.168.56.101:9092",
-        "database.history.kafka.topic": "test01-schema-changes.mysql.oc",
-        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
-    }
-}
-```
-
-- 해당 설정을 Connect로 등록하여 신규 connector 생성.
-
-```sql
-http POST http://localhost:8083/connectors @mysql_cdc_oc_source_test01.json
-```
-
-- 데이터를 customers 테이블에 입력한 뒤 토픽과 메시지 생성 확인
-
-```sql
-use oc;
-
-insert into customers values (1, 'testaddress_01@testdomain', 'testuser_01');
-insert into customers values (2, 'testaddress_02@testdomain', 'testuser_02');
-insert into orders values(1, now(), 1, 'delivered', 1);
-insert into products values(1, 'testproduct', 'testcategory', 100);
-insert into order_items values(1, 1, 1, 100, 1);
-
-update customers set full_name='updateduser_01' where customer_id = 2;
-
-delete from customers where customer_id = 2;
-```
-
-- 토픽 메시지 확인
-
-```sql
-kafkacat -b localhost:9092 -t test01.oc.customers -C -J -e|jq '.'
-# 또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic test01.oc.customers --from-beginning --property print.key=true| jq '.'
-```
-
-### JDBC Sink Connector로 데이터 동기화 실습 - Source에서 ExtractNewRecordState SMT 적용 없는 메시지
-
-- Debezium Source Connector의 메시지를 그대로 생성하면 JDBC Sink Connector는 해당 포맷을 해석할 수 없으므로 데이터 입력처리 불가
-- mysql -u root -p 로 접속하여 oc_sink DB 생성하고 connect_dev 사용자에게 권한 부여.
-
-```sql
-create database oc_sink;
-grant all privileges on oc_sink.* to 'connect_dev'@'%' with grant option;
-```
-
-- 아래 script를 수행하여 oc_sink 디비에 새로운 테이블들을 생성.
-
-```sql
-use oc_sink;
-
-drop table if exists customers_sink;
-drop table if exists products_sink;
-drop table if exists orders_sink;
-drop table if exists order_items_sink;
-
--- 아래 Create Table 스크립트수행.
-CREATE TABLE customers_sink (
-customer_id int NOT NULL PRIMARY KEY,
-email_address varchar(255) NOT NULL,
-full_name varchar(255) NOT NULL
-) ENGINE=InnoDB ;
-
-CREATE TABLE products_sink (
-	product_id int NOT NULL PRIMARY KEY,
-	product_name varchar(100) NULL,
-	product_category varchar(200) NULL,
-	unit_price numeric NULL
-) ENGINE=InnoDB ;
-
-CREATE TABLE orders_sink (
-	order_id int NOT NULL PRIMARY KEY,
-	order_datetime timestamp NOT NULL,
-	customer_id int NOT NULL,
-	order_status varchar(10) NOT NULL,
-	store_id int NOT NULL
-) ENGINE=InnoDB ;
-
-CREATE TABLE order_items_sink (
-	order_id int NOT NULL,
-	line_item_id int NOT NULL,
-	product_id int NOT NULL,
-	unit_price numeric(10, 2) NOT NULL,
-	quantity int NOT NULL,
-	primary key (order_id, line_item_id)
-) ENGINE=InnoDB;
-
-select * from customers_sink;
-select * from products_sink;
-select * from orders_sink;
-select * from order_items_sink;
-```
-
-- mysql_jdbc_oc_sink_customers_00.json 파일로 아래 설정을 저장.
-
-```json
-{
-    "name": "mysql_jdbc_oc_sink_customers_00",
-    "config": {
-        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
-        "tasks.max": "1",
-        "topics": "test01.oc.customers",
-        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
-        "connection.user": "connect_dev",
-        "connection.password": "connect_dev",
-        "table.name.format": "customers_sink",
-        "insert.mode": "upsert",
-        "pk.fields": "customer_id",
-        "pk.mode": "record_key",
-        "delete.enabled": "true",
-        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
-    }
-}
-```
-
-- 새로운 Connector로 생성 등록
-
-```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_00.json
-```
-
-- connect console에서 로그 메시지를 확인하면 Sink Connector가 수행되지 않고 오류가 발생함을 확인
-
-### Update와 Delete 시에 메시지 확인
-
-- 소스 테이블에 update와 Delete 수행 후에 메시지 확인
-
-### 
-
-### Source에서 ExtractNewRecordState SMT 적용하여 After 메시지만 생성.
-
-- ExtractNewRecordStateSMT를 적용하여 환경설정. 아래 내용을 mysql_cdc_oc_source_01.json 파일에 저장
-
-```json
-{
-    "name": "mysql_cdc_oc_source_01",
-    "config": {
-        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
-        "tasks.max": "1",
-        "database.hostname": "localhost",
-        "database.port": "3306",
-        "database.user": "connect_dev",
-        "database.password": "connect_dev",
-        "database.server.id": "10001",
-        "database.server.name": "mysql-01",
-        "database.include.list": "oc",
-        "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items", 
-        "database.history.kafka.bootstrap.servers": "localhost:9092",
-        "database.history.kafka.topic": "schema-changes.mysql-01.oc",
-        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-
-        "transforms": "unwrap",
-        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
-        "transforms.unwrap.drop.tombstones": "false"
-    }
-}
-```
-
-- 해당 설정을 Connect로 등록하여 신규 connector 생성.
-
-```sql
-http POST http://localhost:8083/connectors @mysql_cdc_oc_source_01.json
-```
-
-- 토픽 메시지 확인
-
-```sql
-kafkacat -b localhost:9092 -t mysql01.oc.customers -C -J -e|jq '.'
-# 또는 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic mysql-01.oc.customers --from-beginning --property print.key=true| jq '.'
-```
-
-- JDBC Sink Connector 신규 생성. 아래 설정을 mysql_jdbc_oc_sink_customers_01.json 파일에 저장
-
-```json
-{
-    "name": "mysql_jdbc_oc_sink_customers_01",
-    "config": {
-        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
-        "tasks.max": "1",
-        "topics": "mysql-01.oc.customers",
-        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
-        "connection.user": "connect_dev",
-        "connection.password": "connect_dev",
-        "table.name.format": "customers_sink",
-        "insert.mode": "upsert",
-        "pk.fields": "customer_id",
-        "pk.mode": "record_key",
-        "delete.enabled": "true",
-        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
-    }
-}
-```
-
-- 해당 설정을 Connect로 등록하여 신규 connector 생성.
-
-```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_customers_01.json
-```
-
-- 소스 테이블의 데이터가 제대로 Sink 되는지 oc_sink 내의 테이블 확인
-
-### connect-offsets 및 __consumer_offsets 메시지 확인
+### connect-offsets 메시지 확인
 
 - Source Connector에서 기록한 connect-offset 메시지 확인
 
@@ -368,14 +10,7 @@ kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q |jq '.'
 show_topic_message.sh json connect-offsets
 ```
 
-- Sink Connector에서 기록한 __consumer_offsets 메시지 확인
-
-```sql
-echo "exclude.internal.topics=false" > /home/min/consumer_temp.config
-kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --bootstrap-server localhost:9092 --topic __consumer_offsets  --formatter "kafka.coordinator.group.GroupMetadataManager\$OffsetsMessageFormatter" --from-beginning
-```
-
-### products, orders, order_items 테이블용 JDBC Sink Connector 생성
+### products, order_items 테이블용 JDBC Sink Connector 생성
 
 - 아래 설정을 mysql_jdbc_oc_sink_products_01.json으로 저장.
 
@@ -385,36 +20,13 @@ kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --boots
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "mysql-01.oc.products",
+        "topics": "mysql01.oc.products",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         "table.name.format": "products_sink",
         "insert.mode": "upsert",
         "pk.fields": "product_id",
-        "pk.mode": "record_key",
-        "delete.enabled": "true",
-        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
-    }
-}
-```
-
-- 아래 설정을 mysql_jdbc_oc_sink_orders_01.json으로 저장.
-
-```json
-{
-    "name": "mysql_jdbc_oc_sink_orders_01",
-    "config": {
-        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
-        "tasks.max": "1",
-        "topics": "mysql-01.oc.orders",
-        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
-        "connection.user": "connect_dev",
-        "connection.password": "connect_dev",
-        "table.name.format": "orders_sink",
-        "insert.mode": "upsert",
-        "pk.fields": "order_id",
         "pk.mode": "record_key",
         "delete.enabled": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
@@ -431,7 +43,7 @@ kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --boots
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "mysql-01.oc.order_items",
+        "topics": "mysql01.oc.order_items",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
@@ -446,12 +58,221 @@ kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --boots
 }
 ```
 
-- products_sink, orders_sink, order_items_sink용 JDBC Sink Connector를 생성.
+- products_sink,order_items_sink용 JDBC Sink Connector를 생성.
 
 ```sql
-http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_products_01.json
-http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_orders_01.json
-http POST http://localhost:8083/connectors @mysql_jdbc_oc_sink_order_items_01.json
+register_connector mysql_jdbc_oc_sink_products_01.json
+register_connector mysql_jdbc_oc_sink_order_items_01.json
+```
+
+- 생성 후 sink 테이블에 제대로 데이터가 입력되었는지 확인.
+
+### date, datetime, timestamp 관련 데이터 변환
+
+- date와 datetime 컬럼 타입을 테스트해보기 위해 orders_datetime_tab 테이블을 oc DB에 생성
+
+```sql
+use oc;
+
+CREATE TABLE orders_datetime_tab (
+	order_id int NOT NULL PRIMARY KEY,
+	order_date date NOT NULL,
+	order_datetime datetime NOT NULL,
+	customer_id int NOT NULL,
+	order_status varchar(10) NOT NULL,
+	store_id int NOT NULL
+) ENGINE=InnoDB ;
+```
+
+- oc_sink db에 orders_datetime_tab_sink 테이블 생성
+
+```sql
+use oc_sink;
+
+CREATE TABLE orders_datetime_tab_sink (
+	order_id int NOT NULL PRIMARY KEY,
+	order_date date NOT NULL,
+	order_datetime datetime NOT NULL,
+	customer_id int NOT NULL,
+	order_status varchar(10) NOT NULL,
+	store_id int NOT NULL
+) ENGINE=InnoDB ;
+```
+
+- Debezium Source Connector로 생성하기 위해 mysql_cdc_oc_source_datetime_tab_test01.json으로 아래 저장.
+
+```sql
+{
+    "name": "mysql_cdc_oc_source_datetime_tab_test01",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "localhost",
+        "database.port": "3306",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.allowPublicKeyRetrieval": "true",
+
+        "database.server.id": "10020",
+        "database.server.name": "test01",
+        "database.include.list": "oc",
+        "table.include.list": "oc.orders_datetime_tab",
+        "database.history.kafka.bootstrap.servers": "localhost:9092",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "time.precision.mode": "connect",
+
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+    }
+}
+```
+
+- Source Connector 생성 등록
+
+```sql
+register_connector mysql_cdc_oc_source_datetime_tab_test01.json
+```
+
+- 생성된 topic 메시지 확인
+
+```sql
+show_topic_messages json test01.oc.orders_datetime_tab
+```
+
+- test01.oc.orders_datetime_tab을 Target DB로 입력하기 위해 mysql_jdbc_oc_sink_datetime_tab_test01.json 파일로 아래 JDBC Sink Connector 신규 환경 설정
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_datetime_tab_01",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "test01.oc.orders_datetime_tab",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "orders_datetime_tab_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- jdbc sink connector 등록하고 성공적으로 등록되는지 Connect 메시지 확인.
+
+```sql
+register_connector mysql_jdbc_oc_sink_datetime_tab.json
+```
+
+- 기존 source와 sink connector 삭제
+
+```sql
+delete_connector mysql_cdc_oc_source_datetime_tab_test01
+delete_connector mysql_mysql_jdbc_oc_sink_datetime_tab_01
+```
+
+- “time.precision.mode": "connect" 설정을 추가하여 mysql_cdc_oc_source_datetime_tab_test02.json으로 새로운 source connector 생성.
+
+```sql
+{
+    "name": "mysql_cdc_oc_source_datetime_tab_test02",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "localhost",
+        "database.port": "3306",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.allowPublicKeyRetrieval": "true",
+
+        "database.server.id": "10021",
+        "database.server.name": "test02",
+        "database.include.list": "oc",
+        "table.include.list": "oc.orders_datetime_tab",
+        "database.history.kafka.bootstrap.servers": "localhost:9092",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "time.precision.mode": "connect",
+
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+    }
+}
+```
+
+- mysql_cdc_oc_source_datetime_tab_test02.json을 connect에 등록
+
+```sql
+register_connector mysql_cdc_oc_source_datetime_tab_test02.json
+```
+
+- topics 설정을 test02.oc.orders_datetime_tab 으로 변경한  jdbc sink connector를 mysql_jdbc_oc_sink_datetime_tab_02로 저장.
+
+```sql
+{
+    "name": "mysql_jdbc_oc_sink_datetime_tab_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "test02.oc.orders_datetime_tab",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "orders_datetime_tab_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- mysql_cdc_oc_source_datetime_tab_test02.json을 connect에 등록
+
+```sql
+register_connector mysql_jdbc_oc_sink_datetime_tab_02.json
+```
+
+- oc_sink.orders_datetime_tab_sink 테이블에 데이터가 잘 입력되었는지 확인.
+
+### timestamp with timezone 컬럼 타입의 Source Connector 데이터 변환
+
+```sql
+
+```
+
+- 아래 설정을 mysql_jdbc_oc_sink_orders_01.json으로 저장.
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_orders_01",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql01.oc.orders",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "orders_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
 ```
 
 ### Debezium Source Connector와 JDBC Sink Connector 연동 테스트
