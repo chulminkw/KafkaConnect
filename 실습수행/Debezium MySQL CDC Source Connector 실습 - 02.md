@@ -101,7 +101,7 @@ CREATE TABLE orders_datetime_tab_sink (
 ) ENGINE=InnoDB ;
 ```
 
-- Debezium Source Connector로 생성하기 위해 mysql_cdc_oc_source_datetime_tab_test01.json으로 아래 저장.
+- Debezium Source Connector로 생성하기 위해 mysql_cdc_oc_source_datetime_tab_01.json으로 아래 저장.
 
 ```sql
 {
@@ -176,12 +176,12 @@ register_connector mysql_jdbc_oc_sink_datetime_tab_01.json
 
 ```sql
 delete_connector mysql_cdc_oc_source_datetime_tab_01
-delete_connector mysql_mysql_jdbc_oc_sink_datetime_tab_01
+delete_connector mysql_jdbc_oc_sink_datetime_tab_01
 ```
 
 - “time.precision.mode": "connect" 설정을 추가하여 mysql_cdc_oc_source_datetime_tab_02.json으로 새로운 source connector 생성.
 
-```sql
+```json
 {
     "name": "mysql_cdc_oc_source_datetime_tab_02",
     "config": {
@@ -211,15 +211,15 @@ delete_connector mysql_mysql_jdbc_oc_sink_datetime_tab_01
 }
 ```
 
-- mysql_cdc_oc_source_datetime_tab_test02.json을 connect에 등록
+- mysql_cdc_oc_source_datetime_tab_02.json을 connect에 등록
 
-```sql
+```bash
 register_connector mysql_cdc_oc_source_datetime_tab_02.json
 ```
 
 - topics 설정을 test02.oc.orders_datetime_tab 으로 변경한  jdbc sink connector를 mysql_jdbc_oc_sink_datetime_tab_02로 저장.
 
-```sql
+```json
 {
     "name": "mysql_jdbc_oc_sink_datetime_tab_02",
     "config": {
@@ -242,14 +242,14 @@ register_connector mysql_cdc_oc_source_datetime_tab_02.json
 
 - mysql_cdc_oc_source_datetime_tab_test02.json을 connect에 등록
 
-```sql
+```bash
 register_connector mysql_jdbc_oc_sink_datetime_tab_02.json
 ```
 
 - oc_sink.orders_datetime_tab_sink 테이블에 데이터가 잘 입력되었는지 확인.
 - 테스트에 사용한 connector를 모두 삭제
 
-```json
+```bash
 delete_connector mysql_cdc_oc_source_datetime_tab_01
 delete_connector mysql_cdc_oc_source_datetime_tab_02
 
@@ -369,7 +369,7 @@ register_connector mysql_jdbc_oc_sink_timestamp_tab_01.json
 - oc_sink.orders_timestamp_tab_sink 테이블의 데이터 확인.
 - oc_sink.orders_timestamp_tab_sink 데이터 확인 후 truncate 수행.
 
-```json
+```sql
 use oc_sink;
 
 truncate table orders_timestamp_tab_sink;
