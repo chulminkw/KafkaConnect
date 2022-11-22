@@ -349,7 +349,7 @@ show_topic_messages json test01.oc.orders_timestamp_tab
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "test02.oc.orders_timestamp_tab",
+        "topics": "test01.oc.orders_timestamp_tab",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
@@ -393,7 +393,7 @@ truncate table orders_timestamp_tab_sink;
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "test02.oc.orders_timestamp_tab",
+        "topics": "test01.oc.orders_timestamp_tab",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
