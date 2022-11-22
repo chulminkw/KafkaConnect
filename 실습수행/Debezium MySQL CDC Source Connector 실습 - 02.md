@@ -74,6 +74,8 @@ register_connector mysql_jdbc_oc_sink_order_items_01.json
 ```sql
 use oc;
 
+drop table if exists orders_datetime_tab;
+
 CREATE TABLE orders_datetime_tab (
 	order_id int NOT NULL PRIMARY KEY,
 	order_date date NOT NULL,
@@ -90,6 +92,8 @@ insert into orders_datetime_tab values (1, now(), now(), 1, 'delivered', 1);
 
 ```sql
 use oc_sink;
+
+drop table if exists orders_datetime_tab_sink;
 
 CREATE TABLE orders_datetime_tab_sink (
 	order_id int NOT NULL PRIMARY KEY,
