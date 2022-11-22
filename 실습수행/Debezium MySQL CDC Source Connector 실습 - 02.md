@@ -84,7 +84,6 @@ CREATE TABLE orders_datetime_tab (
 ) ENGINE=InnoDB ;
 
 insert into orders_datetime_tab values (1, now(), now(), 1, 'delivered', 1);
-
 ```
 
 - oc_sink db에 orders_datetime_tab_sink 테이블 생성
@@ -106,7 +105,7 @@ CREATE TABLE orders_datetime_tab_sink (
 
 ```sql
 {
-    "name": "mysql_cdc_oc_source_datetime_tab_test01",
+    "name": "mysql_cdc_oc_source_datetime_tab_01",
     "config": {
         "connector.class": "io.debezium.connector.mysql.MySqlConnector",
         "tasks.max": "1",
@@ -124,8 +123,7 @@ CREATE TABLE orders_datetime_tab_sink (
         "database.history.kafka.topic": "schema-changes.mysql.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "time.precision.mode": "connect",
-
+     
         "transforms": "unwrap",
         "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
         "transforms.unwrap.drop.tombstones": "false"
@@ -136,7 +134,7 @@ CREATE TABLE orders_datetime_tab_sink (
 - Source Connector 생성 등록
 
 ```sql
-register_connector mysql_cdc_oc_source_datetime_tab_test01.json
+register_connector mysql_cdc_oc_source_datetime_tab_01.json
 ```
 
 - 생성된 topic 메시지 확인
@@ -145,7 +143,7 @@ register_connector mysql_cdc_oc_source_datetime_tab_test01.json
 show_topic_messages json test01.oc.orders_datetime_tab
 ```
 
-- test01.oc.orders_datetime_tab을 Target DB로 입력하기 위해 mysql_jdbc_oc_sink_datetime_tab_test01.json 파일로 아래 JDBC Sink Connector 신규 환경 설정
+- test01.oc.orders_datetime_tab을 Target DB로 입력하기 위해 mysql_jdbc_oc_sink_datetime_tab_01.json 파일로 아래 JDBC Sink Connector 신규 환경 설정
 
 ```json
 {
@@ -171,21 +169,21 @@ show_topic_messages json test01.oc.orders_datetime_tab
 - jdbc sink connector 등록하고 성공적으로 등록되는지 Connect 메시지 확인.
 
 ```sql
-register_connector mysql_jdbc_oc_sink_datetime_tab.json
+register_connector mysql_jdbc_oc_sink_datetime_tab_01.json
 ```
 
 - 기존 source와 sink connector 삭제
 
 ```sql
-delete_connector mysql_cdc_oc_source_datetime_tab_test01
+delete_connector mysql_cdc_oc_source_datetime_tab_01
 delete_connector mysql_mysql_jdbc_oc_sink_datetime_tab_01
 ```
 
-- “time.precision.mode": "connect" 설정을 추가하여 mysql_cdc_oc_source_datetime_tab_test02.json으로 새로운 source connector 생성.
+- “time.precision.mode": "connect" 설정을 추가하여 mysql_cdc_oc_source_datetime_tab_02.json으로 새로운 source connector 생성.
 
 ```sql
 {
-    "name": "mysql_cdc_oc_source_datetime_tab_test02",
+    "name": "mysql_cdc_oc_source_datetime_tab_02",
     "config": {
         "connector.class": "io.debezium.connector.mysql.MySqlConnector",
         "tasks.max": "1",
@@ -203,6 +201,7 @@ delete_connector mysql_mysql_jdbc_oc_sink_datetime_tab_01
         "database.history.kafka.topic": "schema-changes.mysql.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        
         "time.precision.mode": "connect",
 
         "transforms": "unwrap",
@@ -215,7 +214,7 @@ delete_connector mysql_mysql_jdbc_oc_sink_datetime_tab_01
 - mysql_cdc_oc_source_datetime_tab_test02.json을 connect에 등록
 
 ```sql
-register_connector mysql_cdc_oc_source_datetime_tab_test02.json
+register_connector mysql_cdc_oc_source_datetime_tab_02.json
 ```
 
 - topics 설정을 test02.oc.orders_datetime_tab 으로 변경한  jdbc sink connector를 mysql_jdbc_oc_sink_datetime_tab_02로 저장.
@@ -248,32 +247,211 @@ register_connector mysql_jdbc_oc_sink_datetime_tab_02.json
 ```
 
 - oc_sink.orders_datetime_tab_sink 테이블에 데이터가 잘 입력되었는지 확인.
+- 테스트에 사용한 connector를 모두 삭제
+
+```json
+delete_connector mysql_cdc_oc_source_datetime_tab_01
+delete_connector mysql_cdc_oc_source_datetime_tab_02
+
+delete_connector mysql_jdbc_oc_sink_datetime_tab_01
+delete_connector mysql_jdbc_oc_sink_datetime_tab_02
+```
 
 ### timestamp with timezone 컬럼 타입의 Source Connector 데이터 변환
 
-```sql
+- timestamp 컬럼을 가지는 테이블 생성.
 
+```sql
+use oc;
+
+CREATE TABLE orders_timestamp_tab (
+	order_id int NOT NULL PRIMARY KEY,
+	order_datetime datetime NOT NULL,
+  order_timestamp timestamp NOT NULL,
+	customer_id int NOT NULL,
+	order_status varchar(10) NOT NULL,
+	store_id int NOT NULL
+) ENGINE=InnoDB ;
+
+-- oc_sink db에서 아래 수행. 
+use oc_sink;
+
+CREATE TABLE orders_timestamp_tab_sink (
+	order_id int NOT NULL PRIMARY KEY,
+	order_datetime datetime NOT NULL,
+  order_timestamp timestamp NOT NULL,
+	customer_id int NOT NULL,
+	order_status varchar(10) NOT NULL,
+	store_id int NOT NULL
+) ENGINE=InnoDB ;
 ```
 
-- 아래 설정을 mysql_jdbc_oc_sink_orders_01.json으로 저장.
+- orders_timestamp_tab을 읽어들이는 debezium source connector를 mysql_cdc_oc_source_timestamp_tab_01.json으로 아래와 같이 설정. "database.serverTimezone": "Asia/Seoul"을 추가
 
 ```json
 {
-    "name": "mysql_jdbc_oc_sink_orders_01",
+    "name": "mysql_cdc_oc_source_timestamp_tab_01",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "localhost",
+        "database.port": "3306",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.allowPublicKeyRetrieval": "true",
+
+        "database.server.id": "10022",
+        "database.server.name": "test01",
+        "database.include.list": "oc",
+        "table.include.list": "oc.orders_timestamp_tab",
+        "database.history.kafka.bootstrap.servers": "localhost:9092",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        
+        "time.precision.mode": "connect",
+        "database.serverTimezone": "Asia/Seoul",
+
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+    }
+}
+```
+
+- Source Connector 생성등록
+
+```bash
+register_connector mysql_cdc_oc_source_timestamp_tab_01.json
+```
+
+- 생성된 토픽 메시지 확인
+
+```bash
+show_topic_messages json test01.oc.orders_timestamp_tab
+```
+
+- 아래와 같은 JDBC Sink Connector 설정을 mysql_jdbc_oc_sink_timestamp_tab_01.json으로 설정
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_timestamp_tab_01",
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "mysql01.oc.orders",
+        "topics": "test02.oc.orders_timestamp_tab",
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "orders_sink",
+        "table.name.format": "oc_sink.orders_timestamp_tab_sink",
         "insert.mode": "upsert",
         "pk.fields": "order_id",
         "pk.mode": "record_key",
         "delete.enabled": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+        "transforms": "convertTS",
+        "transforms.convertTS.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+        "transforms.convertTS.field": "order_timestamp",
+        "transforms.convertTS.format": "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        "transforms.convertTS.target.type": "Timestamp"
+    }
+}
+```
+
+- JDBC Sink Connector 생성등록
+
+```bash
+register_connector mysql_jdbc_oc_sink_timestamp_tab_01.json
+```
+
+- oc_sink.orders_timestamp_tab_sink 테이블의 데이터 확인.
+- oc_sink.orders_timestamp_tab_sink 데이터 확인 후 truncate 수행.
+
+```json
+use oc_sink;
+
+truncate table orders_timestamp_tab_sink;
+```
+
+- 아래와 같은 JDBC Sink Connector 설정을 mysql_jdbc_oc_sink_timestamp_tab_02.json으로 설정. "db.timezone": "Asia/Seoul" 추가
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_timestamp_tab_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "test02.oc.orders_timestamp_tab",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "oc_sink.orders_timestamp_tab_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+        "db.timezone": "Asia/Seoul",
+
+        "transforms": "convertTS",
+        "transforms.convertTS.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+        "transforms.convertTS.field": "order_timestamp",
+        "transforms.convertTS.format": "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        "transforms.convertTS.target.type": "Timestamp"
+    }
+}
+```
+
+- JDBC Sink Connector 생성등록
+
+```bash
+register_connector mysql_jdbc_oc_sink_timestamp_tab_02.json
+```
+
+- oc_sink.orders_timestamp_tab_sink 테이블의 데이터 확인.
+- 테스트용으로 생성한 connector 모두 삭제
+
+```bash
+delete_connector mysql_cdc_oc_source_timestamp_tab_01
+delete_connector mysql_cdc_oc_sink_timestamp_tab_01
+delete_connector mysql_cdc_oc_sink_timestamp_tab_02
+```
+
+### Debezium 소스 커넥터 재생성.
+
+- 아래 설정을 mysql_cdc_oc_source_02.json으로 저장.
+
+```json
+{
+    "name": "mysql_cdc_oc_source_02",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "localhost",
+        "database.port": "3306",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.allowPublicKeyRetrieval": "true",
+
+        "database.server.id": "12000",
+        "database.server.name": "mysql02",
+        "database.include.list": "oc",
+        "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items, oc.order_datetime_tab", 
+        "database.history.kafka.bootstrap.servers": "localhost:9092",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+        "time.precision.mode": "connect",
+        "database.serverTimezone": "Asia/Seoul",
+
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
     }
 }
 ```
@@ -631,3 +809,29 @@ call INSERT_CUSTOMERS_BATCH(30001, 100);
 ```json
 kafkacat -b localhost:9092 -t mysql04-chonly.oc.customers_batch -J -u -q | jq '.'
 ```
+
+{
+    "name": "mysql_cdc_oc_source_01",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "localhost",
+        "database.port": "3306",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.allowPublicKeyRetrieval": "true",
+
+        "database.server.id": "10001",
+        "database.server.name": "mysql01",
+        "database.include.list": "oc",
+        "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items", 
+        "database.history.kafka.bootstrap.servers": "localhost:9092",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+    }
+}
