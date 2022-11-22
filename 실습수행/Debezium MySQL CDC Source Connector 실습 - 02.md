@@ -263,7 +263,7 @@ delete_connector mysql_jdbc_oc_sink_datetime_tab_02
 
 ### timestamp with timezone 컬럼 타입의 Source Connector 데이터 변환
 
-- timestamp 컬럼을 가지는 테이블 생성.
+- timestamp 컬럼을 가지는 소스 테이블 oc.orders_timestamp_tab을 생성.
 
 ```sql
 use oc;
@@ -277,6 +277,12 @@ CREATE TABLE orders_timestamp_tab (
 	store_id int NOT NULL
 ) ENGINE=InnoDB ;
 
+insert into orders_timestamp_tab values (1, now(), now(), 1, 'delivered', 1);
+```
+
+- sink 테이블 oc_sink.orders_timestamp_tab_sink 생성.
+
+```sql
 -- oc_sink db에서 아래 수행. 
 use oc_sink;
 
@@ -314,7 +320,7 @@ CREATE TABLE orders_timestamp_tab_sink (
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
         
         "time.precision.mode": "connect",
-        "database.serverTimezone": "Asia/Seoul",
+        "database.connectionTimezone": "Asia/Seoul",
 
         "transforms": "unwrap",
         "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
