@@ -645,6 +645,30 @@ call CONNECT_DML_TEST(0, 1000, 100, 100);
 }
 ```
 
+- oc_sink.orders_datetime_tab 테이블의 sink를 위해서 아래 설정을 mysql_jdbc_oc_sink_orders_datetime_tab_02.json으로 저장.
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_orders_datetime_tab_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql02.oc.orders_datetime_tab",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "oc_sink.orders_datetime_tab_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+    }
+}
+```
+
 - oc_sink.order_items 테이블의 sink를 위해서 아래 설정을 mysql_jdbc_oc_sink_order_items_02.json으로 저장.
 
 ```json
@@ -666,6 +690,24 @@ call CONNECT_DML_TEST(0, 1000, 100, 100);
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
 }
+```
+
+- 생성한 source connector와 sink connector를 모두 등록
+- call CONNECT_DML_TEST(0, 5000, 100, 100)  호출
+- 아래 SQL로 oc_sink 테이블들의 입력 건수 확인.
+
+```sql
+use oc_sink;
+
+select 'customers_sink' as table_name, count(*) from customers_sink
+union all
+select 'products_sink' as table_name, count(*) from products_sink
+union all
+select 'orders_sink' as table_name, count(*) from orders_sink
+union all
+select 'orders_datetime_tab_sink' as table_name, count(*) from orders_datetime_tab_sink
+union all
+select 'order_items_sink' as table_name, count(*) from order_items_sink;
 ```
 
 ### Debezium Source Connector의 Batch 처리 이해
