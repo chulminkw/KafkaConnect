@@ -470,6 +470,8 @@ BEGIN
                      concat('testcat_', product_idx), 100* iter_idx/upd_mod);
     
     insert into oc.orders values (order_idx, now(), customer_idx, 'delivered', 1);
+
+    insert into oc.orders_datetime_tab values (order_idx, now(), now(), customer_idx, 'delivered', 1);
        
     insert into oc.order_items values (order_idx, mod(iter_idx, upd_mod)+1, mod(iter_idx, upd_mod)+1, 100* iter_idx/upd_mod, 1); 
     
@@ -477,11 +479,13 @@ BEGIN
        update oc.customers set full_name = concat('updateduser_', customer_idx) where customer_id = customer_idx;
        update oc.products set product_name = concat('updproduct_', product_idx) where product_id = product_idx;
        update oc.orders set  order_status = 'updated' where order_id = order_idx;
+       update oc.orders_datetime_tab set  order_status = 'updated' where order_id = order_idx;
        update oc.order_items set quantity = 2 where order_id = order_idx;
 
        delete from oc.customers where customer_id = customer_idx -1;
        delete from oc.products where product_id = product_idx - 1;
        delete from oc.orders where order_id = order_idx - 1;
+       delete from oc.orders_datetime_tab where order_id = order_idx -1;
        delete from oc.order_items where order_id = order_idx - 1;
  
     end if;
@@ -506,6 +510,7 @@ truncate table oc.customers;
 truncate table oc.products;
 truncate table oc.orders;
 truncate table oc.order_items;
+truncate table oc.orders_datetime_tab;
 
 use oc_sink;
 
@@ -513,6 +518,7 @@ truncate table oc_sink.customers_sink;
 truncate table oc_sink.products_sink;
 truncate table oc_sink.orders_sink;
 truncate table oc_sink.order_items_sink;
+truncate table oc_sink.orders_datetime_tab_sink;
 
 ```
 
@@ -546,7 +552,7 @@ call CONNECT_DML_TEST(0, 1000, 100, 100);
         "database.server.id": "12000",
         "database.server.name": "mysql02",
         "database.include.list": "oc",
-        "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items, oc.order_datetime_tab", 
+        "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items, oc.orders_datetime_tab", 
         "database.history.kafka.bootstrap.servers": "localhost:9092",
         "database.history.kafka.topic": "schema-changes.mysql.oc",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
