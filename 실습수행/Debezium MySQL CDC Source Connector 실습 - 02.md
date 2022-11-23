@@ -296,7 +296,7 @@ CREATE TABLE orders_timestamp_tab_sink (
 ) ENGINE=InnoDB ;
 ```
 
-- orders_timestamp_tab을 읽어들이는 debezium source connector를 mysql_cdc_oc_source_timestamp_tab_01.json으로 아래와 같이 설정. "database.serverTimezone": "Asia/Seoul"을 추가
+- orders_timestamp_tab을 읽어들이는 debezium source connector를 mysql_cdc_oc_source_timestamp_tab_01.json으로 아래와 같이 설정. "database.connectionTimezone": "Asia/Seoul"을 추가
 
 ```json
 {
