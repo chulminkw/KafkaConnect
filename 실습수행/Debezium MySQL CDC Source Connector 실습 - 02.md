@@ -431,12 +431,10 @@ delete_connector mysql_jdbc_oc_sink_timestamp_tab_01
 delete_connector mysql_jdbc_oc_sink_timestamp_tab_02
 ```
 
-### Debezium 소스 커넥터 재생성.
-
-### Debezium Source Connector와 JDBC Sink Connector 연동 테스트
+### 대량 데이터로 Debezium Source Connector와 JDBC Sink Connector 연동 테스트
 
 - 기존 Source 테이블에 있는 모든 데이터를 삭제.  연동이 제대로 되어 있으면 Source 테이블에만 delete 적용해도 target 테이블도 같이 적용. 만일 Source 테이블에 Truncate를 적용하였으면 Target쪽에도 수동으로 SQL을 통해 Truncate 적용.
-- DML 테스트를 위해 아래의 Procedure를 생성. 아래 Procedure는 repeat_cnt만큼 데이터를 insert 수행.  repeat_cnt 만큼 반복 insert 수행중 upd_mod
+- 대량 DML를 소스 테이블에 수행할 수 있는 Procedure를 아래와 같이 생성.
 
 ```sql
 use oc;
@@ -518,7 +516,7 @@ truncate table oc_sink.order_items_sink;
 
 ```
 
-- CONNECT_DML_TEST 호출하여 Insert/Update/Delete 수행 테스트. 1000건의 데이터 입력 및 100번 수행시 마다 update와 delete 수행 및 0.5 초 휴식
+- CONNECT_DML_TEST 호출하여 Insert/Update/Delete 수행 테스트. 1000건의 데이터 입력 및 100번 수행시 마다 update와 delete 수행 및 1초 휴식
 
 ```sql
 use oc;
@@ -528,7 +526,7 @@ call CONNECT_DML_TEST(0, 1000, 100, 100);
 
 - oc.customers, oc.products, oc.orders, oc.order_items 테이블 데이터 확인.
 
-### Debezium Source Connector 재 설정
+### 연동 테스트를 위해 Debezium Source Connector 및 JDBC Sink Connector 재 설정
 
 - date/time/datetime/timestamp 처리를 위한 Debezium Source Connector와 JDBC Sink Connector 재설정.
 - Debezium Source Connector는 아래 설정으로 mysql_cdc_oc_source_02.json으로 저장.
