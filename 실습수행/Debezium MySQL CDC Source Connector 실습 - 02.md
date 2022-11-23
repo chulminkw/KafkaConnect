@@ -24,7 +24,7 @@ show_topic_message.sh json connect-offsets
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "products_sink",
+        "table.name.format": "oc_sink.products_sink",
         "insert.mode": "upsert",
         "pk.fields": "product_id",
         "pk.mode": "record_key",
@@ -47,7 +47,7 @@ show_topic_message.sh json connect-offsets
         "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "order_items_sink",
+        "table.name.format": "oc_sink.order_items_sink",
         "insert.mode": "upsert",
         "pk.fields": "order_id, line_item_id",
         "pk.mode": "record_key",
@@ -427,13 +427,111 @@ register_connector mysql_jdbc_oc_sink_timestamp_tab_02.json
 
 ```bash
 delete_connector mysql_cdc_oc_source_timestamp_tab_01
-delete_connector mysql_cdc_oc_sink_timestamp_tab_01
-delete_connector mysql_cdc_oc_sink_timestamp_tab_02
+delete_connector mysql_jdbc_oc_sink_timestamp_tab_01
+delete_connector mysql_jdbc_oc_sink_timestamp_tab_02
 ```
 
 ### Debezium 소스 커넥터 재생성.
 
-- 아래 설정을 mysql_cdc_oc_source_02.json으로 저장.
+### Debezium Source Connector와 JDBC Sink Connector 연동 테스트
+
+- 기존 Source 테이블에 있는 모든 데이터를 삭제.  연동이 제대로 되어 있으면 Source 테이블에만 delete 적용해도 target 테이블도 같이 적용. 만일 Source 테이블에 Truncate를 적용하였으면 Target쪽에도 수동으로 SQL을 통해 Truncate 적용.
+- DML 테스트를 위해 아래의 Procedure를 생성. 아래 Procedure는 repeat_cnt만큼 데이터를 insert 수행.  repeat_cnt 만큼 반복 insert 수행중 upd_mod
+
+```sql
+use oc;
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS oc.CONNECT_DML_TEST$$
+
+create procedure CONNECT_DML_TEST(
+  max_id INTEGER, 
+	repeat_cnt INTEGER,
+  upd_mod INTEGER,
+  sleep_mod INTEGER
+)
+BEGIN
+	DECLARE customer_idx INTEGER;
+	DECLARE product_idx INTEGER;
+  DECLARE order_idx INTEGER;
+ 
+  DECLARE iter_idx INTEGER;
+  
+  SET iter_idx = 1; 
+
+	WHILE iter_idx <= repeat_cnt DO
+    SET customer_idx = max_id + iter_idx;
+    SET order_idx = max_id + iter_idx;
+    SET product_idx = max_id + iter_idx;
+    
+    insert into oc.customers values (customer_idx, concat('testuser_', 
+                     customer_idx),  concat('testuser_', customer_idx));
+
+    insert into oc.products values (product_idx, concat('testproduct_', product_idx), 
+                     concat('testcat_', product_idx), 100* iter_idx/upd_mod);
+    
+    insert into oc.orders values (order_idx, now(), customer_idx, 'delivered', 1);
+       
+    insert into oc.order_items values (order_idx, mod(iter_idx, upd_mod)+1, mod(iter_idx, upd_mod)+1, 100* iter_idx/upd_mod, 1); 
+    
+		if upd_mod > 0 and mod(iter_idx, upd_mod) = 0 then
+       update oc.customers set full_name = concat('updateduser_', customer_idx) where customer_id = customer_idx;
+       update oc.products set product_name = concat('updproduct_', product_idx) where product_id = product_idx;
+       update oc.orders set  order_status = 'updated' where order_id = order_idx;
+       update oc.order_items set quantity = 2 where order_id = order_idx;
+
+       delete from oc.customers where customer_id = customer_idx -1;
+       delete from oc.products where product_id = product_idx - 1;
+       delete from oc.orders where order_id = order_idx - 1;
+       delete from oc.order_items where order_id = order_idx - 1;
+ 
+    end if;
+
+    if sleep_mod > 0 and mod(iter_idx, sleep_mod) = 0 then
+        select sleep(1);
+    end if;
+   
+    SET iter_idx = iter_idx + 1;
+  END WHILE;
+END$$
+
+DELIMITER ;
+```
+
+- 기존 테이블 데이터 삭제
+
+```sql
+use oc;
+
+truncate table oc.customers;
+truncate table oc.products;
+truncate table oc.orders;
+truncate table oc.order_items;
+
+use oc_sink;
+
+truncate table oc_sink.customers_sink;
+truncate table oc_sink.products_sink;
+truncate table oc_sink.orders_sink;
+truncate table oc_sink.order_items_sink;
+
+```
+
+- CONNECT_DML_TEST 호출하여 Insert/Update/Delete 수행 테스트. 1000건의 데이터 입력 및 100번 수행시 마다 update와 delete 수행 및 0.5 초 휴식
+
+```sql
+use oc;
+
+call CONNECT_DML_TEST(0, 1000, 100, 100);
+```
+
+- oc.customers, oc.products, oc.orders, oc.order_items 테이블 데이터 확인.
+
+### Debezium Source Connector 재 설정
+
+- date/time/datetime/timestamp 처리를 위한 Debezium Source Connector와 JDBC Sink Connector 재설정.
+- Debezium Source Connector는 아래 설정으로 mysql_cdc_oc_source_02.json으로 저장.
 
 ```json
 {
@@ -466,98 +564,123 @@ delete_connector mysql_cdc_oc_sink_timestamp_tab_02
 }
 ```
 
-### Debezium Source Connector와 JDBC Sink Connector 연동 테스트
+- oc_sink.customers_sink 테이블의 sink를 위해서 아래 설정을 mysql_jdbc_oc_sink_customers_02.json으로 저장.
 
-- 기존 Source 테이블에 있는 모든 데이터를 삭제.  연동이 제대로 되어 있으면 Source 테이블에만 delete 적용해도 target 테이블도 같이 적용. 만일 Source 테이블에 Truncate를 적용하였으면 Target쪽에도 수동으로 SQL을 통해 Truncate 적용.
-- DML 테스트를 위해 아래의 Procedure를 생성. 아래 Procedure는 repeat_cnt만큼 데이터를 insert 수행.  repeat_cnt 만큼 반복 insert 수행중 upd_mod
-
-```sql
-use oc;
-
-DELIMITER $$
-
-DROP PROCEDURE IF EXISTS oc.CONNECT_DML_TEST$$
-
-create procedure CONNECT_DML_TEST(
-  max_customer_id INTEGER,
-  max_order_id INTEGER,
-	repeat_cnt INTEGER,
-  upd_mod INTEGER
-)
-BEGIN
-	DECLARE customer_idx INTEGER;
-	DECLARE product_idx INTEGER;
-  DECLARE product_idx_start INTEGER;
-  DECLARE order_idx INTEGER;
-  DECLARE line_item_idx INTEGER;
-  DECLARE iter_idx INTEGER;
-  
-  SET iter_idx = 1; 
-
-	WHILE iter_idx <= repeat_cnt DO
-    SET customer_idx = max_customer_id + iter_idx;
-    SET order_idx = max_order_id + iter_idx;
-    
-    insert into oc.customers values (customer_idx, concat('testuser_', 
-                     customer_idx),  concat('testuser_', customer_idx));
-    
-    insert into oc.orders values (order_idx, now(), customer_idx, 'delivered', 1);
-       
-    insert into oc.order_items values (order_idx, mod(iter_idx, upd_mod)+1, mod(iter_idx, upd_mod)+1, 100* iter_idx/upd_mod, 1); 
-    
-		if mod(iter_idx, upd_mod) = 0 then
-       update oc.customers set full_name = concat('updateduser_', customer_idx) where customer_id = customer_idx;
-       update oc.orders set  order_status = 'updated' where order_id = order_idx;
-       update oc.order_items set quantity = 2 where order_id = order_idx;
-    end if;
-   
-    SET iter_idx = iter_idx + 1;
-  END WHILE;
-END$$
-
-DELIMITER ;
+```json
+{
+    "name": "mysql_jdbc_oc_sink_customers_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql02.oc.customers",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "oc_sink.customers_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "customer_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
 ```
 
-- products 테이블을 아래와 같이 수동으로 생성.
+- oc_sink.products_sink 테이블의 sink를 위해서 아래 설정을 mysql_jdbc_oc_sink_products_02.json으로 저장.
 
-```sql
-insert into products values(1, 'testproduct_01', 'testcategory_01', 100);
-insert into products values(2, 'testproduct_02', 'testcategory_02', 200);
-insert into products values(3, 'testproduct_03', 'testcategory_03', 300);
-insert into products values(4, 'testproduct_04', 'testcategory_04', 400);
-insert into products values(5, 'testproduct_05', 'testcategory_05', 500);
-insert into products values(6, 'testproduct_06', 'testcategory_06', 600);
-insert into products values(7, 'testproduct_07', 'testcategory_07', 700);
-insert into products values(8, 'testproduct_08', 'testcategory_08', 800);
-insert into products values(9, 'testproduct_09', 'testcategory_09', 900);
+```json
+{
+    "name": "mysql_jdbc_oc_sink_products_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql02.oc.products",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "oc_sink.products_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "product_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
 ```
 
-```sql
-truncate table oc.customers;
-truncate table oc.orders;
-truncate table oc.order_items;
+- oc_sink.orders 테이블의 sink를 위해서 아래 설정을 mysql_jdbc_oc_sink_orders_02.json으로 저장.
 
-truncate table oc_sink.customers_sink;
-truncate table oc_sink.orders_sink;
-truncate table oc_sink.order_items_sink;
+```json
+{
+    "name": "mysql_jdbc_oc_sink_orders_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql02.oc.orders",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "oc_sink.orders_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+
+        "db.timezone": "Asia/Seoul",
+
+        "transforms": "convertTS",
+        "transforms.convertTS.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+        "transforms.convertTS.field": "order_datetime",
+        "transforms.convertTS.format": "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        "transforms.convertTS.target.type": "Timestamp"
+    }
+}
 ```
 
-```sql
-call CONNECT_DML_TEST(0, 0, 50, 10);
+- oc_sink.order_items 테이블의 sink를 위해서 아래 설정을 mysql_jdbc_oc_sink_order_items_02.json으로 저장.
+
+```json
+{
+    "name": "mysql_jdbc_oc_sink_order_items_02",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "mysql02.oc.order_items",
+        "connection.url": "jdbc:mysql://localhost:3306/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "oc_sink.order_items_sink",
+        "insert.mode": "upsert",
+        "pk.fields": "order_id, line_item_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
 ```
 
-```sql
-call CONNECT_DML_TEST(50, 50, 100, 5);
-```
+### Debezium Source Connector의 Batch 처리 이해
+
+- Debezium Source Connector는 한번에 여러건의 데이터를 DB로 부터 읽어서 이를 Producer가 Kafka로 전송
+- connect-offsets 토픽에서 mysql_cdc_oc_source_02 Connector의 offsets 정보 확인.
 
 ```sql
-CREATE TABLE orders_test_new (
-	order_id int NOT NULL PRIMARY KEY,
-	order_datetime timestamp NOT NULL,
-	customer_id int NOT NULL,
-	order_status varchar(10) NOT NULL,
-	store_id int NOT NULL
-) ENGINE=InnoDB ;
+kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q |jq -c '{key , payload}' | grep 'mysql_cdc_oc_source_02'
+```
+
+### JDBC Sink Connector의 Batch 처리 이해
+
+- JDBC Sink Connector는 한번에 여러건의 데이터를 Consumer가 읽어서 DB에 입력
+- __consumer_offsets 토픽에서 jdbc sink connector의 offsets 정보 확인.
+
+```sql
+echo "exclude.internal.topics=false" > consumer_temp.config
+kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --bootstrap-server localhost:9092 --topic __consumer_offsets  --formatter "kafka.coordinator.group.GroupMetadataManager\$OffsetsMessageFormatter" --from-beginning | grep 'mysql_jdbc_oc_sink_.*_02'
 ```
 
 ### Topic 명의 dot(.)을 dash로 변경하기
@@ -819,29 +942,3 @@ call INSERT_CUSTOMERS_BATCH(30001, 100);
 ```json
 kafkacat -b localhost:9092 -t mysql04-chonly.oc.customers_batch -J -u -q | jq '.'
 ```
-
-{
-    "name": "mysql_cdc_oc_source_01",
-    "config": {
-        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
-        "tasks.max": "1",
-        "database.hostname": "localhost",
-        "database.port": "3306",
-        "database.user": "connect_dev",
-        "database.password": "connect_dev",
-        "database.allowPublicKeyRetrieval": "true",
-
-        "database.server.id": "10001",
-        "database.server.name": "mysql01",
-        "database.include.list": "oc",
-        "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items", 
-        "database.history.kafka.bootstrap.servers": "localhost:9092",
-        "database.history.kafka.topic": "schema-changes.mysql.oc",
-        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-
-        "transforms": "unwrap",
-        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
-        "transforms.unwrap.drop.tombstones": "false"
-    }
-}
