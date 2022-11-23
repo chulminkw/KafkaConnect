@@ -559,7 +559,7 @@ call CONNECT_DML_TEST(0, 1000, 100, 100);
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
 
         "time.precision.mode": "connect",
-        "database.serverTimezone": "Asia/Seoul",
+        "database.connectionTimezone": "Asia/Seoul",
 
         "transforms": "unwrap",
         "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
