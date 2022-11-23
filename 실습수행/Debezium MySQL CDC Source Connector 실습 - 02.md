@@ -445,20 +445,20 @@ DROP PROCEDURE IF EXISTS oc.CONNECT_DML_TEST$$
 
 create procedure CONNECT_DML_TEST(
   max_id INTEGER, 
-	repeat_cnt INTEGER,
+  repeat_cnt INTEGER,
   upd_mod INTEGER,
   sleep_mod INTEGER
 )
 BEGIN
-	DECLARE customer_idx INTEGER;
-	DECLARE product_idx INTEGER;
+  DECLARE customer_idx INTEGER;
+  DECLARE product_idx INTEGER;
   DECLARE order_idx INTEGER;
  
   DECLARE iter_idx INTEGER;
   
   SET iter_idx = 1; 
 
-	WHILE iter_idx <= repeat_cnt DO
+  WHILE iter_idx <= repeat_cnt DO
     SET customer_idx = max_id + iter_idx;
     SET order_idx = max_id + iter_idx;
     SET product_idx = max_id + iter_idx;
@@ -473,7 +473,7 @@ BEGIN
        
     insert into oc.order_items values (order_idx, mod(iter_idx, upd_mod)+1, mod(iter_idx, upd_mod)+1, 100* iter_idx/upd_mod, 1); 
     
-		if upd_mod > 0 and mod(iter_idx, upd_mod) = 0 then
+    if upd_mod > 0 and mod(iter_idx, upd_mod) = 0 then
        update oc.customers set full_name = concat('updateduser_', customer_idx) where customer_id = customer_idx;
        update oc.products set product_name = concat('updproduct_', product_idx) where product_id = product_idx;
        update oc.orders set  order_status = 'updated' where order_id = order_idx;
