@@ -25,7 +25,7 @@ kafka-topics --bootstrap-server localhost:9092 --create --topic mysqlren-oc-cust
         "database.server.id": "12001",
         "database.server.name": "mysqlren",
         "database.include.list": "oc",
-        "table.include.list": "oc.customers, oc.orders",
+        "table.include.list": "oc.customers",
         "database.history.kafka.bootstrap.servers": "localhost:9092",
         "database.history.kafka.topic": "schema-changes.mysql.oc",
 
