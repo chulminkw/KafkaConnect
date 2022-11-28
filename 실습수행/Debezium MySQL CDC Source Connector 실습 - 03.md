@@ -338,7 +338,7 @@ use oc_sink;
 select * from customers_redef_sink;
 ```
 
-### Source 테이블의 컬럼 타입 삭제
+### Source 테이블의 컬럼 삭제
 
 - oc.customers_redef 테이블의 address_02 컬럼 삭제후 connector 상태, 토픽 메시지, 타겟 테이블 값 확인.
 
