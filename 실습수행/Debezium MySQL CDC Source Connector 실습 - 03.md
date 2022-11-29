@@ -221,7 +221,7 @@ values (6, 'test', 'test', 30, 10000, 'test address 01');
 ```sql
 use oc;
 
-alter table customers_redef add column (address_02 varchar(100) default 'default address');
+alter table customers_redef add column (address_02 varchar(100) not null default 'default address');
 
 describe customers_redef;
 
@@ -253,7 +253,7 @@ kafka-console-consumer --consumer.config /home/min/consumer_temp.config  --boots
 ```sql
 use oc_sink;
 
-alter table oc_sink.customers_redef_sink add column (address_02 varchar(100) default 'default address');
+alter table oc_sink.customers_redef_sink add column (address_02 varchar(100) not null default 'default address');
 
 alter table oc_sink.customers_redef_sink modify column address_01 varchar(100);
 
@@ -382,26 +382,69 @@ describe customers_redef;
 insert into customers_redef values (13, 'test', 'test', 30, 5001, now(), now(), 'test_addr');
 ```
 
-### 초기 Snapshot 모드 변동 테스트
+### Snapshot 모드를 schema_only로 설정후 데이터 연동
 
 - snapshot.mode=initial 로 default로 설정되어 있으면 connector를 생성하기 이전에 기존 소스 테이블에 생성되어 있는 레코드를 모두 카프카로 보내어서 동기화를 시킴. 기존 테이블의 데이터가 너무 클 경우 snapshot에 매우 오랜 시간이 소모됨.
 - Connector가 생성되기 이전의 데이터를 메시지 생성하지 않을 경우 snapshot.mode를 schama_only로 설정하면 connector 생성 이후의 변경 데이터만 메시지로 생성.
 - oc.customers_batch 테이블에 데이터가 대량으로 들어있는지 확인.
 
-```json
+```sql
 use oc;
 
-select count(*) from oc.customers_batch;
+drop table if exists customers_batch;
 
-select max(customer_id) from oc.customers_batch;
+-- 아래 Create Table 스크립트수행.
+CREATE TABLE customers_batch (
+customer_id int NOT NULL PRIMARY KEY,
+email_address varchar(255) NOT NULL,
+full_name varchar(255) NOT NULL
+) ENGINE=InnoDB ;
+
 ```
 
-- 기존 oc.customers_batch 테이블을 처리하는 Source Connector 삭제
-- snapshot.mode를 schema_only로 설정한 아래 config를 mysql_cdc_oc_source_04_chonly.json으로 저장하고 새로운 connector 등록 생성.
+```sql
+use oc;
+
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS oc.INSERT_CUSTOMERS_BATCH$$
+
+create procedure INSERT_CUSTOMERS_BATCH(
+  max_id INTEGER, 
+  repeat_cnt INTEGER
+)
+BEGIN
+  DECLARE customer_idx INTEGER;
+  DECLARE iter_idx INTEGER;
+  
+  SET iter_idx = 1; 
+
+  WHILE iter_idx <= repeat_cnt DO
+    SET customer_idx = max_id + iter_idx;
+      
+    insert into oc.customers_batch values (customer_idx, concat('testuser_', 
+                     customer_idx),  concat('testuser_', customer_idx));
+
+    SET iter_idx = iter_idx + 1;
+  END WHILE;
+END$$
+
+DELIMITER ;
+```
+
+- 1000건의 데이터를 customers_batch 테이블에 입력
+
+```sql
+truncate table customers_batch;
+
+call INSERT_CUSTOMERS_BATCH(0, 1000);
+```
+
+- snapshot.mode를 schema_only로 설정한 아래 config를 mysql_cdc_oc_source_schema_only.json으로 저장하고 새로운 connector 등록 생성.
 
 ```json
 {
-    "name": "mysql_cdc_oc_source_04_chonly",
+    "name": "mysql_cdc_oc_source_schema_only",
     "config": {
         "connector.class": "io.debezium.connector.mysql.MySqlConnector",
         "tasks.max": "1",
@@ -409,18 +452,16 @@ select max(customer_id) from oc.customers_batch;
         "database.port": "3306",
         "database.user": "connect_dev",
         "database.password": "connect_dev",
-        "database.server.id": "10027",
-        "database.server.name": "mysql04-chonly",
+        "database.server.id": "13000",
+        "database.server.name": "mysqlsonly",
         "database.include.list": "oc",
         "table.include.list": "oc.customers_batch",
         "database.history.kafka.bootstrap.servers": "localhost:9092",
-        "database.history.kafka.topic": "schema-changes.mysql-01.oc",
+        "database.history.kafka.topic": "schema-changes.mysql.oc",
+        "database.allowPublicKeyRetrieval": "true",
 
         "snapshot.mode": "schema_only",
 
-        "database.allowPublicKeyRetrieval": "true",
-        "database.connectionTimeZone": "Asia/Seoul",
-
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
 
@@ -431,84 +472,14 @@ select max(customer_id) from oc.customers_batch;
 }
 ```
 
-- mysql04-chonly.oc.customers_batch 토픽명으로 토픽이 생성되는지 확인.
-- 100건의 데이터를 customers_batch 테이블에 입력 후
-
-```json
-call INSERT_CUSTOMERS_BATCH(30001, 100);
-```
-
-- mysql04-chonly.oc.customers_batch 토픽에 데이터 입력 건수 확인.
-
-```json
-kafkacat -b localhost:9092 -t mysql04-chonly.oc.customers_batch -J -u -q | jq '.'
-```
-
-### 동일한 Source 테이블에 여러개의 Connector를 적용할 때 문제점
-
-- 동일한 Source 테이블에 여러개의 Connector가 생성을 할 수는 있지만 이들중 단 하나의 Connector만 해당 테이블의 변경 사항을 Topic 메시지를 생성함에 유의. 따라서 동일한 Source 테이블에 여러개의 Connector를 생성하는 것은 피해야 함.
-- mysql_cdc_oc_source_01_test.json 파일에 아래와 같이 oc.customers를 Source 테이블로 하는 새로운 Source Connector를 생성할 수 있도록 config 설정하고 Connector에 등록.  topic name은 mysql-01-test로 시작할 수 있도록 변경.
+- mysqlb01.oc.customers_batch 토픽명으로 토픽이 생성되는지 확인.  토픽 메시지 내용 확인.
 
 ```sql
-{
-    "name": "mysql_cdc_oc_source_01_test",
-    "config": {
-        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
-        "tasks.max": "1",
-        "database.hostname": "localhost",
-        "database.port": "3306",
-        "database.user": "connect_dev",
-        "database.password": "connect_dev",
-        "database.server.id": "10022",
-        "database.server.name": "mysql-01-test",
-        "database.include.list": "oc",
-        "table.include.list": "oc.customers",
-        "database.history.kafka.bootstrap.servers": "localhost:9092",
-        "database.history.kafka.topic": "schema-changes.mysql-01.oc",
-
-        "database.allowPublicKeyRetrieval": "true",
-        "database.connectionTimeZone": "Asia/Seoul",
-
-        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-
-        "transforms": "unwrap",
-        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
-        "transforms.unwrap.drop.tombstones": "false"
-    }
-}
+show_topic_messages json mysqlb01.oc.customers_batch
 ```
 
-- Connect에 새로운 Connector 등록하고 해당 topic들과 connect-offsets 토픽 메시지 확인
+- 추가적으로 5개의 레코드를 customers_batch에 입력하고 토픽 메시지 내용 확인.
 
 ```sql
-# connect-offsets 메시지 확인. 
-kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q |jq '.'
-
-# mysql-01-test.oc.customers 메시지 확인.
-kafkacat -b localhost:9092 -C -t mysql-01-test.oc.customers -J -u -q |jq '.'
-
-# mysql-01.oc.customers 메시지 확인.
-kafkacat -b localhost:9092 -C -t mysql-01.oc.customers -J -u -q |jq '.'
-```
-
-- 새로운 데이터를 oc.customers 테이블에 입력하고 토픽 메시지들을 확인.
-
-```sql
-use oc;
-
-insert into customers values (7, 'testmail', 'testuser');
-```
-
-- 추가로 등록한 connector를 삭제하고 토픽 메시지들을 확인
-
-```sql
-delete_connector mysql_cdc_oc_source_01_test
-```
-
-- 최초 등록한 connector를 삭제후 재 등록하고 토픽 메시지들을 확인
-
-```sql
-delete_connector mysql_cdc_oc_source_01
-register_connector mysql_cdc_oc_source_01.json
+call INSERT_CUSTOMERS_BATCH(1001, 5);
 ```
