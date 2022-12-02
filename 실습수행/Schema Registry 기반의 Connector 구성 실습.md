@@ -11,6 +11,36 @@ $CONFLUENT_HOME/bin/schema-registry-start $CONFLUENT_HOME/etc/schema-registry/sc
 
 - registry_start.sh 을 수행하여 schema registry 기동
 
+### Avro 메시지 전송 및 읽기
+
+- kafka-avro-console-producer를 이용하여 avro 메시지 보내기
+
+```bash
+kafka-avro-console-producer  --broker-list localhost:9092 --topic avro_test \
+--property value.schema='{
+	"type": "record", 
+	"name": "customer_short",
+  "fields": [
+      {"name": "customer_id", "type": "int" },
+      {"name": "customer_name", "type": "string"}
+  ]
+}' \
+--property schema.registry.url=http://localhost:8081
+```
+
+- kafka-avro-console-producer를 이용하여 avro 메시지 읽기
+
+```bash
+kafka-avro-console-consumer  --bootstrap-server localhost:9092 --topic avro_test \
+--property schema.registry.url=http://localhost:8081 --from-beginning
+```
+
+- schema registry에 등록된 정보 확인하기
+
+```bash
+http http://localhost:8081/schemas
+```
+
 ### MySQL용 Debezium CDC Source Connector를 Schema Registry를 적용하여 생성
 
 - 기존 Source Connector를 모두 삭제
@@ -98,7 +128,13 @@ insert into orders_datetime_tab values (1, now(), now(), 1, 'delivered', 1);
 show_topic_messages avro mysqlavro.oc.customers;
 ```
 
-### Schema Registry에 등록된 Schema 정보 확인
+### Schema Registry에 등록된 정보 확인
+
+- 내부 토픽 _schemas 조회
+
+```sql
+kafkacat -b localhost:9092 -C -t _schemas -u -q |jq '.'
+```
 
 - Schema Registry에 등록된 모든 Schema 정보 확인
 
@@ -122,6 +158,18 @@ http GET http://localhost:8081/schemas/ids/1
 
 ```sql
 http GET http://localhost:8081/subjects/mysqlavro.oc.customers-value/versions/1
+```
+
+- 전역으로 등록된 config 정보 확인.
+
+```sql
+http GET http://localhost:8081/config
+```
+
+- 개별 subject별 config 정보 확인.
+
+```sql
+http GET http://localhost:8081/config/mysqlavro.oc.customers-value
 ```
 
 ### JDBC Sink Connector를 Schema Registry를 적용하여 MySQL Target DB에 데이터 입력
@@ -281,3 +329,7 @@ register_connector mysql_jdbc_oc_sink_orders_datetime_tab_avro_01.json
 ```
 
 - Source 테이블의 변경 사항이 Sink 테이블로 반영 되었는지 확인.
+
+```sql
+curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "NONE"}' http://localhost:8081/config/mysqlavroredef07.oc.customers_redef.Value
+```
