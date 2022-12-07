@@ -532,7 +532,7 @@ values (8, 'test', 'test', 30, 1000.999);
 - 해당 토픽 subject의 스키마 호환성 변경.
 
 ```sql
-curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "NONE"}' http://localhost:8081/config/mysqlavroredef01.oc.customers_redef_sr.Value
+curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" --data '{"compatibility": "NONE"}' http://localhost:8081/config/mysqlavroredef01.oc.customers_redef_sr-value
 ```
 
 - 소스 테이블 컬럼명 변경
@@ -544,5 +544,5 @@ alter table customers_redef_sr rename column salary_01 to new_salary_01;
 describe customers_redef_sr;
 
 insert into customers_redef_sr (customer_id, email_address, full_name, age, new_salary_01) 
-values (9, 'test', 'test', 30, 1000, 2000);
+values (9, 'test', 'test', 30, 1000);
 ```
