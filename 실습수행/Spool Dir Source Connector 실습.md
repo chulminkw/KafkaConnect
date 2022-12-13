@@ -60,7 +60,7 @@ mkdir error
 
 - sample csv 파일인 csv-spooldir-source.csv 파일을 다운로드 받은 후 input.path인 실습 VM의 ~/spool_test_dir 디렉토리에 저장
 
-```json
+```sql
 cd 
 wget https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/sample_data/csv-spooldir-source.csv -O csv-spooldir-source-01.csv
 cp csv-spooldir-source.csv ~/spool_test_dir
