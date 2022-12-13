@@ -17,7 +17,7 @@
 
 ```bash
 sudo apt-get install curl
-sudo apt-get instal jq
+sudo apt-get install jq
 ```
 
 - 재 기동 후 아래 curl 명령어로 Connector가 제대로 Connect로 로딩 되었는지 확인
