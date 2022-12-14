@@ -123,8 +123,7 @@ jstack pid
 - 아래 명령어로 connect-offsets 토픽 메시지 내용 살펴 보기.
 
 ```bash
-kafka-console-consumer --bootstrap-server localhost:9092 --topic connect-offsets
- --from-beginning --property print.key=true | jq '.'
+kafka-console-consumer --bootstrap-server localhost:9092 --topic connect-offsets --from-beginning --property print.key=true | jq '.'
 ```
 
 - spool dir source connector가 active로 기동되어 있는지 확인.
