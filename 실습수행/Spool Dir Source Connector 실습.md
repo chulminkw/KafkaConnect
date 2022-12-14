@@ -58,12 +58,12 @@ cd ~/spool_test_dir
 mkdir error
 ```
 
-- sample csv 파일인 csv-spooldir-source.csv 파일을 다운로드 받은 후 input.path인 실습 VM의 ~/spool_test_dir 디렉토리에 저장
+- sample csv 파일인 csv-spooldir-source.csv 파일을 csv-spooldir-source-01.csv파일로 다운로드 받은 후 input.path인 실습 VM의 ~/spool_test_dir 디렉토리에 저장
 
 ```sql
 cd 
 wget https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/sample_data/csv-spooldir-source.csv -O csv-spooldir-source-01.csv
-cp csv-spooldir-source.csv ~/spool_test_dir
+cp csv-spooldir-source-01.csv ~/spool_test_dir
 ```
 
 - REST API를 이용하여 spooldir_source.json 파일로 설정된 Config를 Connect로 등록하여 신규 Spool Dir Source connector 생성.
@@ -116,4 +116,36 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic spooldir-test-t
 ```bash
 ps -ef | grep java
 jstack pid
+```
+
+### Connect 내부 토픽
+
+- 아래 명령어로 connect-offsets 토픽 메시지 내용 살펴 보기.
+
+```bash
+kafka-console-consumer --bootstrap-server localhost:9092 --topic connect-offsets
+ --from-beginning --property print.key=true | jq '.'
+```
+
+- spool dir source connector가 active로 기동되어 있는지 확인.
+- spooldir-test-topic 토픽 메시지 확인
+
+```bash
+kafka-console-consumer --bootstrap-server localhost:9092 --topic spooldir-test-topic --from-beginning --property print.key=true | jq '.'
+```
+
+- sample csv 파일인 csv-spooldir-source.csv 파일을 csv-spooldir-source-01.csv파일로 다시 다운로드 받은 후 input.path인 실습 VM의 ~/spool_test_dir 디렉토리로 이동 후 토픽 메시지 확인.
+
+```sql
+cd 
+wget https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/sample_data/csv-spooldir-source.csv -O csv-spooldir-source-01.csv
+cp csv-spooldir-source-01.csv ~/spool_test_dir
+```
+
+- sample csv 파일인 csv-spooldir-source.csv 파일을 csv-spooldir-source-02.csv파일로 다시 다운로드 받은 후 input.path인 실습 VM의 ~/spool_test_dir 디렉토리로 이동 후 토픽 메시지 확인.
+
+```sql
+cd 
+wget https://raw.githubusercontent.com/chulminkw/KafkaConnect/main/sample_data/csv-spooldir-source.csv -O csv-spooldir-source-02.csv
+cp csv-spooldir-source-01.csv ~/spool_test_dir
 ```
