@@ -81,7 +81,7 @@ sudo apt -y upgrade
 - postgresql 설치
 
 ```sql
-sudo apt install postgresql postgresql-client
+sudo apt-get install postgresql postgresql-client
 ```
 
 ### PostgreSQL DB 환경 구축
