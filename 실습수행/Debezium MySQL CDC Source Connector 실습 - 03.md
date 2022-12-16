@@ -2,13 +2,13 @@
 
 ### Topic 이름의 dot(.)을 dash로 변경하기
 
-- mysqlren-oc-customers 토픽명으로 partition 개수가 3개인 토픽을 생성.
+- mysqlrename-oc-customers 토픽명으로 partition 개수가 3개인 토픽을 생성.
 
 ```sql
-kafka-topics --bootstrap-server localhost:9092 --create --topic mysqlren-oc-customers --partitions 3
+kafka-topics --bootstrap-server localhost:9092 --create --topic mysqlrename-oc-customers --partitions 3
 ```
 
-- 기존 [database.server.name](http://database.server.name) = mysqlren, database.include.list=oc, table.include.list=oc.customers 일 경우 topic명은 mysqlren.oc.customers로 생성됨. 이를 mysqlren-oc-customers 로 토픽명 변경
+- 기존 [database.server.name](http://database.server.name) = mysqlrename, database.include.list=oc, table.include.list=oc.customers 일 경우 topic명은 mysqlrename.oc.customers로 생성됨. 이를 mysqlren-oc-customers 로 토픽명 변경
 - 정규 표현식의 dot(.)는 특수문자이므로 이를 단순 문자로 인식하기 위해 \ 추가. json에서 \을 인식시키기 위해 \\ 로 변경
 - 아래 설정을 mysql_cdc_oc_source_rename_topic.json 파일명으로 저장.
 
@@ -23,7 +23,7 @@ kafka-topics --bootstrap-server localhost:9092 --create --topic mysqlren-oc-cust
         "database.user": "connect_dev",
         "database.password": "connect_dev",
         "database.server.id": "12001",
-        "database.server.name": "mysqlren",
+        "database.server.name": "mysqlrename",
         "database.include.list": "oc",
         "table.include.list": "oc.customers",
         "database.history.kafka.bootstrap.servers": "localhost:9092",
@@ -34,15 +34,17 @@ kafka-topics --bootstrap-server localhost:9092 --create --topic mysqlren-oc-cust
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
 
-        "transforms": "rename_topic",
+        "transforms": "rename_topic, unwrap",
         "transforms.rename_topic.type": "org.apache.kafka.connect.transforms.RegexRouter",
         "transforms.rename_topic.regex": "(.*)\\.(.*)\\.(.*)",
-        "transforms.rename_topic.replacement": "$1-$2-$3"
+        "transforms.rename_topic.replacement": "$1-$2-$3",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
     }
 }
 ```
 
-- 위에서 생성한 mysql_cdc_oc_source_rename_topic.json 을 connector로 생성 등록하고 mysqlren-oc-customers 토픽 생성 및 토픽 메시지 확인.
+- 위에서 생성한 mysql_cdc_oc_source_rename_topic.json 을 connector로 생성 등록하고 mysqlrename-oc-customers 토픽 생성 및 토픽 메시지 확인.
 
 ### auto.evolove=true 설정시 Source 테이블의 컬럼 추가/변경/삭제에 따른 JDBC Sink Connector의 Target 테이블 변경
 
@@ -472,10 +474,11 @@ call INSERT_CUSTOMERS_BATCH(0, 1000);
 }
 ```
 
-- mysqlb01.oc.customers_batch 토픽명으로 토픽이 생성되는지 확인.  토픽 메시지 내용 확인.
+- mysqlsonly.oc.customers_batch 토픽명으로 토픽이 생성되는지 확인(토픽이 생성되지 않음)
+- connect-offsets 토픽에서 mysql_cdc_oc_source_schema_only Connector의 offsets 정보 확인.
 
 ```sql
-show_topic_messages json mysqlb01.oc.customers_batch
+kafkacat -b localhost:9092 -C -t connect-offsets -J -u -q |jq -c '{key , payload}' | grep 'mysql_cdc_oc_source_schema_only'
 ```
 
 - 추가적으로 5개의 레코드를 customers_batch에 입력하고 토픽 메시지 내용 확인.
