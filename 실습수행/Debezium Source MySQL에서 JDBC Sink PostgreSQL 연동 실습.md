@@ -1,6 +1,6 @@
 # Debezium Source MySQL에서 JDBC Sink PostgreSQL 연동 실습
 
-- mysql -u root -p 로 root 사용자로 mysql 접속 후 oc 데이터베이스 생성하고 connect_dev 사용자에게 접근 권한 부여
+- mysql -u root -p 로 root 사용자로 mysql 접속 후 ops 데이터베이스 생성하고 connect_dev 사용자에게 접근 권한 부여
 
 ```sql
 
