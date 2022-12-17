@@ -249,7 +249,7 @@ kafkacat -b localhost:9092 -t kcat-test-topic -C -K#
 - connect-offsets 토픽에서 connector별 key값과 partition 확인
 
 ```bash
-kafkacat -b localhost:9092 -t connect-offsets -C -f '\nKey: %k\nValue: %s\nPartition: %p\nOffset: %o\n\n'
+kafkacat -b localhost:9092 -t connect-offsets -C -f '\nKey: %k\nValue: %s\nPartition: %p\nOffset: %o\n\n' -u -q
 ```
 
 - offset Reset을 적용. 대상 connector에 해당하는 key값의 value에 Null을 적용. 최종 메시지가 있는 partition을 찾아서 해당 partition에 Null 메시지를 적용해야 함
