@@ -21,6 +21,7 @@ drop table if exists customers;
 drop table if exists products;
 drop table if exists orders;
 drop table if exists order_items;
+drop table boards;
 
 -- 아래 Create Table 스크립트수행.
 CREATE TABLE customers (
@@ -81,7 +82,7 @@ sudo apt -y upgrade
 - postgresql 설치
 
 ```sql
-sudo apt-get install postgresql postgresql-client
+sudo apt install postgresql postgresql-client
 ```
 
 ### PostgreSQL DB 환경 구축
@@ -160,10 +161,11 @@ show search_path;
 ```sql
 show search_path;
 
-drop table if exists customers;
-drop table if exists products;
-drop table if exists orders;
-drop table if exists order_items;
+drop table if exists customers_sink;
+drop table if exists products_sink;
+drop table if exists orders_sink;
+drop table if exists order_items_sink;
+drop table if exists boards_sink;
 
 -- 아래 Create Table 스크립트수행.
 CREATE TABLE customers_sink (
