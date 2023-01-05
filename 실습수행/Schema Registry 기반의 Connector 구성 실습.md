@@ -82,6 +82,7 @@ truncate table oc_sink.orders_datetime_tab_sink;
         "table.include.list": "oc.customers, oc.products, oc.orders, oc.order_items, oc.orders_datetime_tab",
         "database.history.kafka.bootstrap.servers": "localhost:9092",
         "database.history.kafka.topic": "schema-changes.mysql.oc",
+	"database.allowPublicKeyRetrieval": "true",
 
         "time.precision.mode": "connect",
         "database.connectionTimezone": "Asia/Seoul",
