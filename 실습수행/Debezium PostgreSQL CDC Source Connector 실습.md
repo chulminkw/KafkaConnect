@@ -255,20 +255,8 @@ CREATE TABLE public.order_items_sink (
 - 해당 파일을 Connect에 등록하여 신규 Connector 생성
 
 ```sql
-http POST http://localhost:8083/connectors @postgres_cdc_oc_source_test01.json
-```
-
-- oc DB에 접속하여 기존 테이블의 레코드 삭제
-
-```sql
-sudo su - postgres
-psql -h localhost -U connect_dev -d oc;
-
-\conninfo
-
-truncate table customers;
-truncate table orders;
-
+register_connector postgres_cdc_oc_source_01.json
+show_connectors
 ```
 
 - customers, orders, products, order_items에 데이터 입력
@@ -290,9 +278,7 @@ insert into order_items values(1, 1, 1, 100, 1);
 - 토픽 생성 및 토픽 메시지 확인
 
 ```sql
-kafka-console-consumer --bootstrap-server localhost:9092 --topic pg01.public.customers --from-beginning --property print.key=true |jq '.'
-# orders의 timestamp 컬럼값 확인. 
-kafka-console-consumer --bootstrap-server localhost:9092 --topic pg01.public.orders --from-beginning --property print.key=true |jq '.'
+show_topic_messages json pg.public.customers
 ```
 
 ### JDBC Sink Connector로 데이터 입력
@@ -326,11 +312,14 @@ kafka-console-consumer --bootstrap-server localhost:9092 --topic pg01.public.ord
 - jdbc sink connector 등록
 
 ```sql
-http POST http://localhost:8083/connectors @postgres_jdbc_oc_sink_customers_01.json
+register_connector postgres_jdbc_oc_sink_customers_01.json
+show_connectors
 ```
 
 - oc_sink DB에 접속하여 customers_sink 테이블에 데이터가 입력되었는지 확인
 
 ```sql
+
+\connect oc_sink
 select * from customers_sink;
 ```
