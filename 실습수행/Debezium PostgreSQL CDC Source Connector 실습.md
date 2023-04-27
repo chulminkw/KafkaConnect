@@ -435,7 +435,7 @@ SELECT pg_drop_replication_slot('debezium_02');
 
 ```
 
-### auto.evolove=true 설정시 Source 테이블의 컬럼 추가/변경/삭제에 따른 JDBC Sink Connector의 Target 테이블 변경
+### Source 테이블의 컬럼 추가에 따른 JDBC Sink Connector의 Target 테이블 자동 반영
 
 - 아래와 같이새로운 테이블을 oc와 oc_sink DB에 생성.
 
