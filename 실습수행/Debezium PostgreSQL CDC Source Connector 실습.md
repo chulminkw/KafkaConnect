@@ -323,3 +323,352 @@ show_connectors
 \connect oc_sink
 select * from customers_sink;
 ```
+
+### Debezium에서 all_tables 기반의 Default Publication 생성 시 유의사항.
+
+- 모든 테이블에 대해서 publication을 적용하는 dbz_publication 생성이 되어 있음을 확인. slot 정보도 함께 확인. pg_replication_slots는 모든 db에 대한 replication slot정보를 가지고 있음.
+
+```sql
+\connect oc
+
+select * from pg_publication;
+
+select * from pg_replication_slots;
+```
+
+- PK가 없는 임의의 테이블을 생성 후 데이터 입력. 레코드 삭제 수행 시 오류 발생.  레코드 자체를 identity를 설정하면 문제 없이 삭제됨.
+
+```sql
+create table no_pk_tab
+( col1 integer);
+
+insert into no_pk_tab values (1);
+
+-- 아래는 오류 발생. 
+delete from no_pk_tab;
+
+ALTER TABLE no_pk_tab REPLICA IDENTITY FULL;
+
+delete from no_pk_tab;
+```
+
+- PK가 있는  테이블의 레코드 삭제는 문제 없음.
+
+```sql
+create table pk_tab
+( col1 integer primary key);
+
+insert into pk_tab values (1);
+
+delete from pk_tab; 
+```
+
+- 특정 테이블만을 publication 하는 신규 publication_생성.
+
+```sql
+create publication pub_filtered for table public.customers, public.products, public.orders, public.order_items;
+--create publication pub_all for all tables;
+--create publication pub_schema for tables in public;
+
+select * from pg_publication;
+
+select * from pg_publication_tables;
+```
+
+- 기존 connector를 삭제한 후 publication이 삭제 되는 지 확인.
+
+```sql
+delete_connector postgres_cdc_oc_source_01;
+```
+
+- publication 삭제
+
+```sql
+drop publication dbz_publication;
+
+select * from pg_publication;
+
+-- 아래는 relication_slot 삭제
+--select pg_drop_replication_slot('debezium_01');
+```
+
+- publication.name을 pub_filtered, publication.autocreate.mode를 filtered로 설정. postgres_cdc_oc_source_02.json 파일에 아래 설정 저장.
+
+```sql
+{
+    "name": "postgres_cdc_oc_source_02",
+    "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "database.hostname": "localhost",
+        "database.port": "5432",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.dbname": "oc",
+        "database.server.name": "pg02",
+
+        "plugin.name": "pgoutput",
+        "slot.name": "debezium_01",
+        "publication.name": "pub_filtered",
+        "publication.autocreate.mode": "filtered", 
+
+        "schema.include_list": "public",
+        "table.include.list": "public.customers, public.products, public.orders, public.order_items",
+
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter", 
+        
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+
+    }
+}
+```
+
+- publication과 replication slot 삭제
+
+```sql
+drop publication pub_filtered;
+
+SELECT pg_drop_replication_slot('debezium_01');
+SELECT pg_drop_replication_slot('debezium_02');
+
+```
+
+### auto.evolove=true 설정시 Source 테이블의 컬럼 추가/변경/삭제에 따른 JDBC Sink Connector의 Target 테이블 변경
+
+- 아래와 같이새로운 테이블을 oc와 oc_sink DB에 생성.
+
+```sql
+psql -h localhost -U connect_dev -d oc
+
+\conninfo
+
+drop table if exists customers_redef;
+
+-- 아래 Create Table 스크립트수행.
+CREATE TABLE customers_redef (
+customer_id int NOT NULL PRIMARY KEY,
+email_address varchar(255) NOT NULL,
+full_name varchar(255) NOT NULL
+);
+
+insert into customers_redef (customer_id, email_address, full_name) values (1, 'test', 'test');
+
+\connect oc_sink;
+
+drop table if exists customers_redef_sink;
+
+-- 아래 Create Table 스크립트수행.
+CREATE TABLE customers_redef_sink (
+customer_id int NOT NULL PRIMARY KEY,
+email_address varchar(255) NOT NULL,
+full_name varchar(255) NOT NULL
+);
+
+```
+
+- postgres_cdc_oc_source_redef.json파일에 아래 설정으로 Source Connect 생성
+
+```sql
+{
+    "name": "postgres_cdc_oc_source_redef",
+    "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "database.hostname": "localhost",
+        "database.port": "5432",
+        "database.user": "connect_dev",
+        "database.password": "connect_dev",
+        "database.dbname": "oc",
+        "database.server.name": "pgrd",
+
+        "plugin.name": "pgoutput",
+        "slot.name": "debezium_slot",
+
+        "publication.name": "pub_schema",
+        "publication.autocreate.mode": "filtered", 
+
+        "schema.include_list": "public",
+        
+        "time.precision.mode": "connect",
+        "database.connectionTimezone": "Asia/Seoul",
+
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter", 
+        
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false"
+    }
+}
+```
+
+- auto.evolve=true 설정으로 postgres_jdbc_oc_sink_customers_redef.json 생성.
+
+```json
+{
+    "name": "postgres_jdbc_oc_sink_customers_redef",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "pg02.public.customers_redef",
+        "connection.url": "jdbc:postgresql://localhost:5432/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "public.customers_redef_sink",
+
+        "insert.mode": "upsert",
+        "pk.fields": "customer_id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+
+        "auto.evolve": "true",
+
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
+    }
+}
+```
+
+- connector 생성 등록,  topic 메시지 및 Target 테이블 확인.
+
+```bash
+register_connector postgres_cdc_oc_source_redef.json
+register_connector postgres_jdbc_oc_sink_customers_redef.json.json
+
+# 토픽 메시지 확인
+show_topic_messages json pgrd.public.customers_redef
+```
+
+- publication과 replication slot 확인.
+
+```bash
+\connect oc
+
+select * from pg_publication;
+
+select * from pg_replication_slots;
+```
+
+### Source 테이블에 숫자형 컬럼 추가
+
+- oc DB의 customers_redef 테이블에 정수형 컬럼 추가(default Null) 및 데이터 입력
+
+```sql
+\connect oc;
+
+alter table customers_redef add column age int;
+
+\d customers_redef;
+
+insert into customers_redef (customer_id, email_address, full_name, age) 
+values (2, 'test', 'test', 40);
+```
+
+- 토픽 메시지 및 Target 테이블 변경 확인
+
+```bash
+show_topic_messages json pgrd.public.customers_redef
+```
+
+- oc DB의 customers_redef 테이블에 Not Null 정수형 컬럼 추가 및 데이터 입력 후 토픽 메시지와 Target 테이블 변경 확인
+
+```sql
+\connect oc;
+
+alter table customers_redef add column salary int not null default 0;
+
+\d customers_redef;
+
+insert into customers_redef (customer_id, email_address, full_name, age, salary) 
+values (3, 'test', 'test', 30, 10000);
+```
+
+### Source 테이블에 varchar 컬럼 추가
+
+- customers_redef 테이블에 varchar 컬럼 추가(Null) 및 데이터 입력 후 토픽 메시지와 Target 테이블 변경 확인
+
+```sql
+\connect oc;
+
+alter table customers_redef add column address_01 varchar(100);
+
+\d customers_redef;
+
+insert into customers_redef (customer_id, email_address, full_name, age, salary, address_01) 
+values (4, 'test', 'test', 30, 10000, 'test address 04');
+```
+
+- Target 테이블 값 및 데이터 타입 확인.
+
+```sql
+\connect oc_sink;
+
+select * from customers_redef_sink;
+
+\d customers_redef_sink
+```
+
+- Sink Connector 상태 정지(또는 삭제)
+
+```sql
+http GET http://localhost:8083/connectors/postgres_jdbc_oc_sink_customers_redef/status
+
+delete_connector postgres_jdbc_oc_sink_customers_redef
+```
+
+- Target 테이블 customers_redef_sink의 address_01 컬럼을 varchar(100)으로 변경
+
+```sql
+\connect oc_sink;
+
+alter table customers_redef_sink alter column address_01 type varchar(100);
+
+\d customers_redef_sink;
+```
+
+- postgres_jdbc_oc_sink_customers_redef Sink Connector 재 기동 수행.
+
+```sql
+http GET http://localhost:8083/connectors/postgres_jdbc_oc_sink_customers_redef/status
+
+register_connector postgres_jdbc_oc_sink_customers_redef.json
+```
+
+- oc db에서 customers_redef 테이블에 새로운 데이터 입력 후 oc_sink에서 데이터 확인
+
+```sql
+\connect oc;
+
+insert into customers_redef (customer_id, email_address, full_name, age, salary, address_01) 
+values (5, 'test', 'test', 30, 10000, 'test address 05');
+
+\connect oc_sink;
+
+select * from customers_redef;
+
+\d customers_redef_sink;
+```
+
+### Source 테이블에 date, timestamp, timestamptz 컬럼 추가
+
+- timestamptz 확인
+
+```sql
+show timestamp;
+
+select now();
+
+create table timestamp_test
+(
+timestamp_col timestamp,
+timestamptz_col timestamptz
+);
+
+insert into timestamp_test 
+values (
+to_date('2023-04-27 14:00:00', 'yyyy-mm-dd hh24:mi:ss'),
+to_date('2023-04-27 14:00:00', 'yyyy-mm-dd hh24:mi:ss')
+);
+
+```
