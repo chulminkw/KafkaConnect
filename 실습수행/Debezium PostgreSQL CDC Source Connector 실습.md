@@ -511,7 +511,7 @@ full_name varchar(255) NOT NULL
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "pg02.public.customers_redef",
+        "topics": "pgrd.public.customers_redef",
         "connection.url": "jdbc:postgresql://localhost:5432/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
@@ -650,8 +650,6 @@ select * from customers_redef;
 \d customers_redef_sink;
 ```
 
-### Source 테이블에 date, timestamp, timestamptz 컬럼 추가
-
 - timestamptz 확인
 
 ```sql
@@ -670,5 +668,120 @@ values (
 to_date('2023-04-27 14:00:00', 'yyyy-mm-dd hh24:mi:ss'),
 to_date('2023-04-27 14:00:00', 'yyyy-mm-dd hh24:mi:ss')
 );
+```
 
+### Source 테이블에 date, timestamp, timestamptz 컬럼 추가
+
+- oc db의 temporal_tab 테이블에 date/timestamp/timestamptz 컬럼 생성 및 데이터 입력
+
+```sql
+\connect oc
+
+create table temporal_tab
+( id int primary key,
+  date_col date,
+  timestamp_col timestamp,
+  timestamptz_col timestamptz
+);
+
+alter publication pub_schema add table temporal_tab;
+
+insert into temporal_tab values (1, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00');
+```
+
+- oc db의 publication pub_schema에 temporal_tab 추가
+
+```sql
+\connect oc;
+
+select * from pg_publication;
+
+select * from pg_publication_tables;
+
+alter publication pub_schema add table temporal_tab;
+```
+
+- connector 재기동
+
+```sql
+show_connectors
+
+delete_connector postgres_cdc_oc_source_redef
+
+register_connector postgres_cdc_oc_source_redef
+```
+
+- topic 메시지 확인
+
+```sql
+show_topic_messages json pgrd.public.temporal_tab;
+```
+
+- oc_sink db에 temporal_tab_sink 테이블 생성.
+
+```sql
+\connect oc_sink;
+
+create table temporal_tab_sink
+( id int primary key,
+  date_col date,
+  timestamp_col timestamp,
+  timestamptz_col timestamptz
+);
+```
+
+- sink connector 생성. postgres_jdbc_oc_sink_temporal_tab.json 파일로 설정.
+
+```sql
+{
+    "name": "postgres_jdbc_oc_sink_temporal_tab",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "pgrd.public.temporal_tab_test",
+        "connection.url": "jdbc:postgresql://localhost:5432/oc_sink",
+        "connection.user": "connect_dev",
+        "connection.password": "connect_dev",
+        "table.name.format": "public.temporal_tab_test_sink",
+
+        "insert.mode": "upsert",
+        "pk.fields": "id",
+        "pk.mode": "record_key",
+        "delete.enabled": "true",
+
+        "auto.evolve": "true",
+
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter", 
+
+        "transforms": "convertTS",
+        "transforms.convertTS.type": "org.apache.kafka.connect.transforms.TimestampConverter$Value",
+        "transforms.convertTS.field": "timestamptz_col",
+        "transforms.convertTS.format": "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        "transforms.convertTS.target.type": "Timestamp"
+    }
+}
+```
+
+- connector 등록 후 sink 테이블 확인
+- date 컬럼 추가후 동기화 확인
+
+```sql
+alter table temporal_tab add column date_col_new date;
+
+insert into temporal_tab 
+values (2, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00', 
+       '2023-04-26');
+
+alter table temporal_tab add column timestamp_col_new timestamp;
+
+insert into temporal_tab 
+values (3, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00', 
+'2023-04-26', '2023-04-26 20:00:00');
+
+alter table temporal_tab add column timestamptz_col_new timestamptz;
+
+insert into temporal_tab 
+values (4, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00', 
+'2023-04-26', '2023-04-26 20:00:00', '2023-04-26 20:00:00');
 ```
