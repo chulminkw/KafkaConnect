@@ -650,10 +650,12 @@ select * from customers_redef;
 \d customers_redef_sink;
 ```
 
+### Timezone에 따른 timestamp와 timestamptz 출력 값 차이
+
 - timestamptz 확인
 
 ```sql
-show timestamp;
+show timezone;
 
 select now();
 
@@ -665,9 +667,16 @@ timestamptz_col timestamptz
 
 insert into timestamp_test 
 values (
-to_date('2023-04-27 14:00:00', 'yyyy-mm-dd hh24:mi:ss'),
-to_date('2023-04-27 14:00:00', 'yyyy-mm-dd hh24:mi:ss')
+'2023-04-27 14:00:00',
+'2023-04-27 14:00:00'
 );
+
+select * from timestamp_test;
+
+set timezone='UTC';
+
+select * from timestamp_test;
+
 ```
 
 ### Source 테이블에 date, timestamp, timestamptz 컬럼 추가
@@ -756,24 +765,3 @@ create table temporal_tab_sink
 ```
 
 - connector 등록 후 sink 테이블 확인
-- date 컬럼 추가후 동기화 확인
-
-```sql
-alter table temporal_tab add column date_col_new date;
-
-insert into temporal_tab 
-values (2, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00', 
-       '2023-04-26');
-
-alter table temporal_tab add column timestamp_col_new timestamp;
-
-insert into temporal_tab 
-values (3, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00', 
-'2023-04-26', '2023-04-26 20:00:00');
-
-alter table temporal_tab add column timestamptz_col_new timestamptz;
-
-insert into temporal_tab 
-values (4, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00', 
-'2023-04-26', '2023-04-26 20:00:00', '2023-04-26 20:00:00');
-```
