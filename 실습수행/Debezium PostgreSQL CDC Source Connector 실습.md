@@ -672,7 +672,7 @@ to_date('2023-04-27 14:00:00', 'yyyy-mm-dd hh24:mi:ss')
 
 ### Source 테이블에 date, timestamp, timestamptz 컬럼 추가
 
-- oc db의 temporal_tab 테이블에 date/timestamp/timestamptz 컬럼 생성 및 데이터 입력
+- oc db의 temporal_tab 테이블에 date/timestamp/timestamptz 컬럼 생성 및 데이터 입력 . 데이터 입력 전에 pub_schema publication에 신규 테이블인 temporal_tab 테이블 등록
 
 ```sql
 \connect oc
@@ -684,21 +684,13 @@ create table temporal_tab
   timestamptz_col timestamptz
 );
 
-alter publication pub_schema add table temporal_tab;
-
-insert into temporal_tab values (1, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00');
-```
-
-- oc db의 publication pub_schema에 temporal_tab 추가
-
-```sql
-\connect oc;
-
 select * from pg_publication;
 
 select * from pg_publication_tables;
 
 alter publication pub_schema add table temporal_tab;
+
+insert into temporal_tab values (1, '2023-04-26', '2023-04-26 19:00:00', '2023-04-26 19:00:00');
 ```
 
 - connector 재기동
