@@ -324,7 +324,7 @@ show_connectors
 select * from customers_sink;
 ```
 
-### Debezium에서 all_tables 기반의 Default Publication 생성 시 유의사항.
+### Source Connector에서 Publication 생성 및 적용
 
 - 모든 테이블에 대해서 publication을 적용하는 dbz_publication 생성이 되어 있음을 확인. slot 정보도 함께 확인. pg_replication_slots는 모든 db에 대한 replication slot정보를 가지고 있음.
 
@@ -429,6 +429,7 @@ select * from pg_publication;
 
 ```sql
 drop publication pub_filtered;
+drop publication dbz_publication;
 
 SELECT pg_drop_replication_slot('debezium_01');
 SELECT pg_drop_replication_slot('debezium_02');
@@ -739,11 +740,11 @@ create table temporal_tab_sink
     "config": {
         "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
         "tasks.max": "1",
-        "topics": "pgrd.public.temporal_tab_test",
+        "topics": "pgrd.public.temporal_tab",
         "connection.url": "jdbc:postgresql://localhost:5432/oc_sink",
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
-        "table.name.format": "public.temporal_tab_test_sink",
+        "table.name.format": "public.temporal_tab_sink",
 
         "insert.mode": "upsert",
         "pk.fields": "id",
