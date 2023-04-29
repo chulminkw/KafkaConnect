@@ -219,7 +219,7 @@ register_connector mysql_jdbc_sink_order_items.json
         "connection.user": "connect_dev",
         "connection.password": "connect_dev",
         "insert.mode": "upsert",
-        "pk.mode": "record_key"
+        "pk.mode": "record_key",
         "pk.fields": "product_id",
         "delete.enabled": "true",
         "table.name.format": "om_sink.products_sink",
