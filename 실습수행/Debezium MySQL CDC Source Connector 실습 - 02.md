@@ -663,7 +663,7 @@ call CONNECT_DML_TEST(0, 1000, 100, 100);
         "pk.mode": "record_key",
         "delete.enabled": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter"
 
     }
 }
